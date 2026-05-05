@@ -1,0 +1,16 @@
+<svg width="420" height="104" viewBox="0 0 420 104" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gibraltar logo">
+  <rect x="4" y="16" width="72" height="72" rx="20" fill="#071426"/>
+  <path d="M21 63.2L39.2 28L63 60.6C56.4 64 49.8 64.1 43.2 60.8C36.3 57.4 29 58.1 21 63.2Z" fill="#A96D4D"/>
+  <path d="M39.2 28L63 60.6C56.9 63.7 50.8 63.9 44.7 61.5L47.7 47L42 41L45 35.3L39.2 28Z" fill="#5C3A2A"/>
+  <path d="M26.5 57L33.8 51.2L36.4 59.6L42 41L47.7 47L45.3 56.5L52.4 50.8" stroke="#E8B68F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 63.2C28.5 58.8 35.9 58.4 43.4 62C49.9 65.2 56.5 64.9 63 61.3" stroke="#168EEA" stroke-width="3.9" stroke-linecap="round"/>
+  <path d="M20 71.8C27.7 68.6 35.4 68.6 43 71.8C48.9 74.2 54.9 74.2 61 72" stroke="#2F56E8" stroke-width="3.4" stroke-linecap="round"/>
+  <text x="98" y="63" fill="#071426" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800" letter-spacing="-0.5">Gibraltar</text>
+  <defs>
+    <linearGradient id="paint0_linear" x1="26" y1="30" x2="65" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#20D4C7"/>
+      <stop offset="0.55" stop-color="#168EEA"/>
+      <stop offset="1" stop-color="#2856E8"/>
+    </linearGradient>
+  </defs>
+</svg>
