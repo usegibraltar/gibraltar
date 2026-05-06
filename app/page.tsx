@@ -815,20 +815,17 @@ function Header({ onTry }: { onTry: () => void }) {
             Write my reply
           </button>
         </div>
-        <nav className="flex gap-2 overflow-x-auto pb-1 text-sm font-bold text-slate-600 md:hidden">
-          <a href="#how-it-works" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+        <nav className="grid grid-cols-2 gap-2 text-center text-sm font-bold text-slate-600 sm:grid-cols-4 md:hidden">
+          <a href="#how-it-works" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
             How it works
           </a>
-          <a href="#examples" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+          <a href="#examples" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
             Examples
           </a>
-          <a href="#inbox-preview" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+          <a href="#inbox-preview" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
             Inbox
           </a>
-          <a href="#features" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
-            Businesses
-          </a>
-          <a href="/login" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+          <a href="/login" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
             Login
           </a>
         </nav>
