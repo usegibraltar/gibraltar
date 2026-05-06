@@ -6,6 +6,15 @@ Early access emails are saved to:
 public.early_access_signups
 ```
 
+Approved Gmail users and draft events are stored in:
+
+```text
+public.gmail_connections
+public.gmail_draft_events
+public.business_profiles
+public.follow_up_reminders
+```
+
 ## Setup
 
 1. Create a Supabase project.
@@ -26,11 +35,22 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 You should then see rows in Supabase under Table Editor > `early_access_signups`.
 
+New signups start with `status = 'pending'`. Approve users from the app admin
+page or by changing the row to `status = 'approved'`.
+
 ## Notes
 
 - Do not use the anon key for `SUPABASE_SERVICE_ROLE_KEY`.
 - Do not expose the service role key in browser/client code.
 - Submitting the same email again updates the same row instead of creating a duplicate.
+- Gmail OAuth tokens are encrypted before they are saved. Set
+  `GMAIL_TOKEN_ENCRYPTION_KEY` to a long random secret before connecting Gmail.
+- Google sign-in for app login is configured in Supabase Auth providers. It is
+  separate from the direct Gmail OAuth connection used to create Gmail drafts.
+- Business profiles store lightweight context used to improve generated Gmail
+  drafts. Users can edit their own context from the app workspace.
+- Follow-up reminders are manual reminders only. They do not send emails or
+  trigger background jobs in this MVP.
 - The app does not use Supabase CLI migrations. If you see `supabase_migrations.schema_migrations` errors, that is separate from this MVP signup form. The form only writes to `public.early_access_signups`.
 
 ## Naming

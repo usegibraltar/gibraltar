@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { isValidEmail, normalizeEmail } from "../../lib/email";
 
 type EarlyAccessRequest = {
   email?: unknown;
@@ -7,14 +8,6 @@ type EarlyAccessRequest = {
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
-}
-
-function normalizeEmail(value: unknown) {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export async function POST(request: Request) {
@@ -50,19 +43,17 @@ export async function POST(request: Request) {
     },
   });
 
-  const { error } = await supabase
-    .from("early_access_signups")
-    .upsert(
-      {
-        email,
-        source: "landing_page",
-      },
-      {
-        onConflict: "email",
-      },
-    );
+  const { error } = await supabase.from("early_access_signups").insert({
+    email,
+    source: "landing_page",
+    status: "pending",
+  });
 
   if (error) {
+    if (error.code === "23505") {
+      return NextResponse.json({ ok: true });
+    }
+
     console.error("Early access signup failed", error);
 
     if (error.code === "42P01") {

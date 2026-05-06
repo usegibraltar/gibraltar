@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const businessTypes = [
@@ -784,6 +785,10 @@ export default function Home() {
           <p className="text-sm text-slate-300">
             (c) 2026 Gibraltar. Clear replies. Solid follow-through.
           </p>
+          <div className="flex gap-4 text-sm font-bold text-slate-300">
+            <Link href="/privacy" className="transition hover:text-white">Privacy</Link>
+            <Link href="/terms" className="transition hover:text-white">Terms</Link>
+          </div>
         </div>
       </footer>
     </main>
@@ -813,6 +818,9 @@ function Header({ onTry }: { onTry: () => void }) {
           </a>
           <a href="#features" className="transition hover:text-slate-950">
             For local businesses
+          </a>
+          <a href="/login" className="transition hover:text-slate-950">
+            Login
           </a>
         </nav>
         <button
@@ -1130,8 +1138,11 @@ function EarlyAccessForm({
             </div>
           ) : null}
           <p className="text-left text-sm leading-6 text-slate-300 sm:col-span-2">
-            Emails are saved to your Supabase early access table once you add
-            your Supabase keys.
+            Your request will be reviewed and followed up by email before it is approved.
+            {" "}By joining, you agree to Gibraltar&apos;s{" "}
+            <Link href="/terms" className="font-black text-teal-200 underline decoration-teal-300/50 underline-offset-4">Terms</Link>
+            {" "}and{" "}
+            <Link href="/privacy" className="font-black text-teal-200 underline decoration-teal-300/50 underline-offset-4">Privacy Policy</Link>.
           </p>
         </form>
       )}

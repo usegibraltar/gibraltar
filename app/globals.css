@@ -12,6 +12,8 @@
 
 html {
   scroll-behavior: smooth;
+  scrollbar-color: #7aa8b8 #edf4f7;
+  scrollbar-width: thin;
 }
 
 body {
@@ -32,4 +34,74 @@ textarea {
 
 ::selection {
   background: rgba(56, 189, 248, 0.28);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #edf4f7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8fb5c2;
+  border: 3px solid #edf4f7;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5f95a7;
+}
+
+::-webkit-scrollbar-corner {
+  background: #edf4f7;
+}
+
+.brand-scrollbar {
+  scrollbar-color: #7aa8b8 #f0f6f8;
+  scrollbar-width: thin;
+}
+
+.brand-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.brand-scrollbar::-webkit-scrollbar-track {
+  background: #f0f6f8;
+  border-radius: 999px;
+}
+
+.brand-scrollbar::-webkit-scrollbar-thumb {
+  background: #8fb5c2;
+  border: 2px solid #f0f6f8;
+  border-radius: 999px;
+}
+
+.brand-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #5f95a7;
+}
+
+.brand-scrollbar-horizontal {
+  scrollbar-color: #7aa8b8 transparent;
+  scrollbar-width: thin;
+}
+
+.brand-scrollbar-horizontal::-webkit-scrollbar {
+  height: 8px;
+}
+
+.brand-scrollbar-horizontal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.brand-scrollbar-horizontal::-webkit-scrollbar-thumb {
+  background: #8fb5c2;
+  border-radius: 999px;
+}
+
+.brand-scrollbar-horizontal::-webkit-scrollbar-thumb:hover {
+  background: #5f95a7;
 }
