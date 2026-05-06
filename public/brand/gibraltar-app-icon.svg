@@ -4,9 +4,12 @@
   <circle cx="140" cy="388" r="148" fill="#168EEA" fill-opacity="0.18"/>
   <path d="M112 333L231 101L393 318C348 341 304 342 260 320C213 297 164 302 112 333Z" fill="#A96D4D"/>
   <path d="M231 101L393 318C352 339 311 342 270 326L294 229L257 189L278 153L231 101Z" fill="#5C3A2A"/>
-  <path d="M151 294L200 255L218 312L257 189L294 229L277 290L326 254" stroke="#E8B68F" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M130 298L199 275L218 287L257 230L294 246L318 215" stroke="#E8B68F" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#mountainClip)"/>
   <path d="M112 333C163 303 213 301 263 325C308 346 354 344 402 319" stroke="#168EEA" stroke-width="26" stroke-linecap="round"/>
   <path d="M104 404C157 382 210 382 263 404C305 421 348 421 392 405" stroke="#2F56E8" stroke-width="22" stroke-linecap="round"/>
   <defs>
+    <clipPath id="mountainClip">
+      <path d="M112 333L231 101L393 318C348 341 304 342 260 320C213 297 164 302 112 333Z"/>
+    </clipPath>
   </defs>
 </svg>
