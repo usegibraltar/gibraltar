@@ -256,7 +256,7 @@ export default function Home() {
       <Header onTry={focusTool} />
       <BusinessFlair />
 
-      <section className="relative z-10 px-4 pb-20 pt-32 sm:px-6 lg:px-20 lg:pt-36 xl:px-24">
+      <section className="relative z-10 px-4 pb-20 pt-44 sm:px-6 md:pt-32 lg:px-20 lg:pt-36 xl:px-24">
         <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.95fr_1fr]">
           <div>
             <h1 className="max-w-3xl text-4xl font-black leading-[1.12] sm:text-6xl lg:text-7xl">
@@ -798,15 +798,41 @@ export default function Home() {
 function Header({ onTry }: { onTry: () => void }) {
   return (
     <header className="fixed left-0 right-0 top-4 z-50 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl items-center justify-between rounded-xl border border-slate-200 bg-white/92 px-6 py-4 shadow-lg shadow-slate-200/60 backdrop-blur-xl">
-        <a
-          href="#top"
-          aria-label="Back to top"
-          className="rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-100"
-        >
-          <Logo />
-        </a>
-        <nav className="hidden items-center gap-8 text-base text-slate-600 md:flex">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 rounded-xl border border-slate-200 bg-white/92 px-4 py-3 shadow-lg shadow-slate-200/60 backdrop-blur-xl md:flex-row md:items-center md:justify-between md:gap-8 md:px-6 md:py-4">
+        <div className="flex items-center justify-between gap-3 md:contents">
+          <a
+            href="#top"
+            aria-label="Back to top"
+            className="rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-100 md:order-1"
+          >
+            <Logo />
+          </a>
+          <button
+            type="button"
+            onClick={onTry}
+            className="shrink-0 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 sm:px-6 md:order-3"
+          >
+            Write my reply
+          </button>
+        </div>
+        <nav className="flex gap-2 overflow-x-auto pb-1 text-sm font-bold text-slate-600 md:hidden">
+          <a href="#how-it-works" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+            How it works
+          </a>
+          <a href="#examples" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+            Examples
+          </a>
+          <a href="#inbox-preview" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+            Inbox
+          </a>
+          <a href="#features" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+            Businesses
+          </a>
+          <a href="/login" className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+            Login
+          </a>
+        </nav>
+        <nav className="hidden items-center gap-8 text-base text-slate-600 md:order-2 md:flex">
           <a href="#how-it-works" className="transition hover:text-slate-950">
             How it works
           </a>
@@ -823,13 +849,6 @@ function Header({ onTry }: { onTry: () => void }) {
             Login
           </a>
         </nav>
-        <button
-          type="button"
-          onClick={onTry}
-          className="rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5"
-        >
-          Write my reply
-        </button>
       </div>
     </header>
   );
