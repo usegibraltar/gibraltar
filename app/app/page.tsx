@@ -843,7 +843,13 @@ export default function AppPage() {
           <section className="flex max-h-[78vh] min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:max-h-[calc(100vh-8rem)]">
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-5">
               <div>
-                <p className="text-sm font-black uppercase text-teal-600">Inbox</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-black uppercase text-teal-600">Inbox</p>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs font-black uppercase text-blue-700">
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    AI triage
+                  </span>
+                </div>
                 <h2 className="text-2xl font-black">Choose a message</h2>
                 {payload.connected ? (
                   <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -1145,7 +1151,7 @@ export default function AppPage() {
       ) : null}
 
       {selectedMessage ? (
-        <Modal title="Quick read" onClose={() => setSelectedMessage(null)} wide>
+        <Modal title="Message details" onClose={() => setSelectedMessage(null)} wide>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-black uppercase text-teal-600">From</p>
@@ -1313,7 +1319,7 @@ function ThreadMessage({ message, selected }: { message: GmailThreadMessage; sel
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase text-teal-700">
-            {sent ? "Business reply" : "Customer message"}{selected ? " · selected" : ""}
+            {sent ? "Business reply" : "Customer message"}{selected ? " - selected" : ""}
           </p>
           <p className="mt-1 truncate text-sm font-black text-slate-950">{message.from}</p>
         </div>
@@ -1409,37 +1415,34 @@ function MessageRow({
   onSenderFilter: () => void;
   onGenerate: () => void;
 }) {
+  const needsReply = message.triage?.needsReply ?? true;
+
   return (
-    <article className="p-5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="min-w-0">
-          <button type="button" onClick={onOpen} className="block max-w-full text-left">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate font-black text-slate-950">{message.subject}</p>
-              {message.triage ? <TriageBadges triage={message.triage} /> : null}
+    <article className={`border-l-4 transition hover:bg-slate-50 ${needsReply ? "border-l-orange-400 bg-orange-50/60" : "border-l-transparent bg-white"}`}>
+      <div className="grid gap-3 px-4 py-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="grid min-w-0 gap-2">
+          <button type="button" onClick={onOpen} className="grid min-w-0 gap-2 text-left">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <p className="min-w-0 flex-1 truncate font-black text-slate-950">{message.subject}</p>
+              {message.triage ? <TriageBadges triage={message.triage} compact /> : null}
+              {isOpening ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-teal-100 px-2 py-1 text-xs font-black uppercase text-teal-800">
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  Opening
+                </span>
+              ) : null}
             </div>
+            <p className="line-clamp-1 text-sm leading-5 text-slate-500">{message.snippet || "No preview available."}</p>
           </button>
           <button
             type="button"
             onClick={onSenderFilter}
-            className="mt-1 block max-w-full truncate text-left text-sm font-semibold text-slate-600 transition hover:text-teal-700"
+            className="block max-w-full truncate text-left text-xs font-black uppercase tracking-wide text-slate-500 transition hover:text-teal-700"
           >
             {message.from}
           </button>
-          <button type="button" onClick={onOpen} className="block max-w-full text-left">
-            <p className="mt-3 line-clamp-2 leading-6 text-slate-500">{message.snippet}</p>
-            {message.triage?.reason ? (
-              <p className="mt-2 text-sm font-semibold text-slate-500">{message.triage.reason}</p>
-            ) : null}
-            {isOpening ? (
-              <span className="mt-2 inline-flex items-center gap-2 text-sm font-black text-teal-700">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Opening
-              </span>
-            ) : null}
-          </button>
         </div>
-        <button type="button" onClick={onGenerate} disabled={disabled} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-5 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0">
+        <button type="button" onClick={onGenerate} disabled={disabled} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <PencilLine className="h-4 w-4" aria-hidden="true" />}
           Generate reply
         </button>
@@ -1448,7 +1451,7 @@ function MessageRow({
   );
 }
 
-function TriageBadges({ triage }: { triage: MessageTriage }) {
+function TriageBadges({ triage, compact = false }: { triage: MessageTriage; compact?: boolean }) {
   const categoryLabels: Record<TriageCategory, string> = {
     booking: "Booking",
     pricing: "Pricing",
@@ -1465,12 +1468,19 @@ function TriageBadges({ triage }: { triage: MessageTriage }) {
 
   return (
     <>
+      {triage.needsReply ? (
+        <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs font-black uppercase text-orange-800">
+          Needs Reply
+        </span>
+      ) : null}
       <span className="shrink-0 rounded-full bg-teal-100 px-2 py-1 text-xs font-black uppercase text-teal-800">
         {categoryLabels[triage.category]}
       </span>
-      <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-black uppercase ${urgencyClasses[triage.urgency]}`}>
-        {triage.urgency}
-      </span>
+      {!compact ? (
+        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-black uppercase ${urgencyClasses[triage.urgency]}`}>
+          {triage.urgency}
+        </span>
+      ) : null}
       {!triage.needsReply ? (
         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-black uppercase text-slate-600">
           No reply

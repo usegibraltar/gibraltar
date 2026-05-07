@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   try {
     const accessToken = await getFreshAccessToken(connection);
     const result = await listRecentMessages(accessToken, { query, pageToken });
-    const triage = triageMessages(result.messages);
+    const triage = await triageMessages(result.messages);
 
     return NextResponse.json({
       connected: true,

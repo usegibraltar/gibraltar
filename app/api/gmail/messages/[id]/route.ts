@@ -41,7 +41,7 @@ export async function GET(request: Request, { params }: Params) {
     return NextResponse.json({
       message: {
         ...message,
-        triage: triageMessage(message),
+        triage: await triageMessage(message),
       },
       thread,
     });
