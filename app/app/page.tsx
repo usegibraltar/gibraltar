@@ -1584,12 +1584,18 @@ function MessageRow({
 
   return (
     <article className={`border-l-4 transition hover:bg-slate-50 ${needsReply ? "border-l-orange-400 bg-orange-50/60" : "border-l-transparent bg-white"}`}>
-      <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] gap-3 px-4 py-3">
-        <button type="button" onClick={onOpen} className="grid min-w-0 gap-2 text-left">
+      <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] gap-3 px-4 py-4">
+        <button type="button" onClick={onOpen} className="grid min-w-0 gap-3 text-left">
           <div className="grid min-w-0 gap-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <p className="min-w-0 flex-1 truncate font-black text-slate-950">{message.subject}</p>
-              {message.triage ? <TriageBadges triage={message.triage} compact /> : null}
+            <p className="text-base font-black leading-6 text-slate-950 sm:text-lg sm:leading-7">{brief}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
+              <span className="min-w-0 max-w-full truncate font-bold text-slate-600">{message.from}</span>
+              <span className="min-w-0 max-w-full truncate">{message.subject}</span>
+              {message.date ? <span className="text-slate-400">{message.date}</span> : null}
+              <span className="inline-flex shrink-0 items-center gap-1 font-black uppercase text-teal-700">
+                Open
+                <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              </span>
               {isOpening ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-teal-100 px-2 py-1 text-xs font-black uppercase text-teal-800">
                   <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -1597,15 +1603,8 @@ function MessageRow({
                 </span>
               ) : null}
             </div>
-            <p className="line-clamp-2 text-sm font-semibold leading-5 text-slate-700">{brief}</p>
-            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-black uppercase tracking-wide text-slate-500">
-              <span className="min-w-0 max-w-full truncate">{message.from}</span>
-              {message.date ? <span className="font-semibold normal-case tracking-normal text-slate-400">{message.date}</span> : null}
-              {message.summary && message.snippet ? (
-                <span className="line-clamp-1 basis-full text-xs font-semibold normal-case tracking-normal text-slate-400">
-                  Gmail preview: {message.snippet}
-                </span>
-              ) : null}
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {message.triage ? <TriageBadges triage={message.triage} compact /> : null}
             </div>
           </div>
         </button>
