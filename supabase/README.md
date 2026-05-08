@@ -51,6 +51,8 @@ page or by changing the row to `status = 'approved'`.
 - Gmail message summaries and AI triage are stored in `public.gmail_messages`.
   This lets Gibraltar reuse triage on later app loads instead of sending the
   same message back to AI.
+- One-sentence email briefs are stored in `public.gmail_messages.ai_summary`.
+  They are generated from full Gmail message bodies and reused on later loads.
 - Messages marked as junk are hidden from Gibraltar review by setting
   `public.gmail_messages.is_junk`; this does not delete or modify the message in
   Gmail.

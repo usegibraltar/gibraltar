@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBearerToken, jsonError } from "../../../lib/api";
 import { getFreshAccessToken, listRecentMessages } from "../../../lib/gmail";
-import { loadJunkMessageIds, triageAndStoreMessages } from "../../../lib/gmail-message-store";
+import {
+  loadJunkMessageIds,
+  summarizeAndStoreMessages,
+  triageAndStoreMessages,
+} from "../../../lib/gmail-message-store";
 import { getSupabaseAdmin, GmailConnection, requireApprovedUser } from "../../../lib/supabase";
 import { defaultTriage } from "../../../lib/triage";
 
@@ -44,6 +48,11 @@ export async function GET(request: Request) {
       gmailEmail: connection.gmail_email,
       messages: reviewMessages,
     });
+    const summaries = await summarizeAndStoreMessages({
+      user: auth.user,
+      accessToken,
+      messages: reviewMessages,
+    });
 
     return NextResponse.json({
       connected: true,
@@ -53,6 +62,7 @@ export async function GET(request: Request) {
       messages: reviewMessages.map((message) => ({
         ...message,
         triage: triage.get(message.id) ?? defaultTriage,
+        summary: summaries.get(message.id) ?? message.snippet,
       })),
     });
   } catch (gmailError) {

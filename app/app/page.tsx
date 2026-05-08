@@ -34,6 +34,7 @@ type GmailMessage = {
   subject: string;
   date: string;
   snippet: string;
+  summary?: string;
   triage?: MessageTriage;
 };
 
@@ -1050,7 +1051,6 @@ export default function AppPage() {
                         isRemovingJunk={isRemovingJunk === message.id}
                         disabled={Boolean(isDrafting || isGeneratingReply || isRemovingJunk)}
                         onOpen={() => openMessage(message)}
-                        onSenderFilter={() => setSenderFilter(message.from)}
                         onGenerate={() => generateReply(message)}
                         onRemoveJunk={() => removeJunk(message)}
                       />
@@ -1567,7 +1567,6 @@ function MessageRow({
   isRemovingJunk,
   disabled,
   onOpen,
-  onSenderFilter,
   onGenerate,
   onRemoveJunk,
 }: {
@@ -1577,17 +1576,17 @@ function MessageRow({
   isRemovingJunk: boolean;
   disabled: boolean;
   onOpen: () => void;
-  onSenderFilter: () => void;
   onGenerate: () => void;
   onRemoveJunk: () => void;
 }) {
   const needsReply = message.triage?.needsReply ?? true;
+  const brief = message.summary || message.snippet || "No preview available.";
 
   return (
     <article className={`border-l-4 transition hover:bg-slate-50 ${needsReply ? "border-l-orange-400 bg-orange-50/60" : "border-l-transparent bg-white"}`}>
-      <div className="grid gap-3 px-4 py-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-        <div className="grid min-w-0 gap-2">
-          <button type="button" onClick={onOpen} className="grid min-w-0 gap-2 text-left">
+      <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] gap-3 px-4 py-3">
+        <button type="button" onClick={onOpen} className="grid min-w-0 gap-2 text-left">
+          <div className="grid min-w-0 gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <p className="min-w-0 flex-1 truncate font-black text-slate-950">{message.subject}</p>
               {message.triage ? <TriageBadges triage={message.triage} compact /> : null}
@@ -1598,24 +1597,38 @@ function MessageRow({
                 </span>
               ) : null}
             </div>
-            <p className="line-clamp-1 text-sm leading-5 text-slate-500">{message.snippet || "No preview available."}</p>
+            <p className="line-clamp-2 text-sm font-semibold leading-5 text-slate-700">{brief}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-black uppercase tracking-wide text-slate-500">
+              <span className="min-w-0 max-w-full truncate">{message.from}</span>
+              {message.date ? <span className="font-semibold normal-case tracking-normal text-slate-400">{message.date}</span> : null}
+              {message.summary && message.snippet ? (
+                <span className="line-clamp-1 basis-full text-xs font-semibold normal-case tracking-normal text-slate-400">
+                  Gmail preview: {message.snippet}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </button>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={disabled}
+            aria-label={`Generate reply for ${message.subject}`}
+            title="Generate reply"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0b132b] text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <PencilLine className="h-4 w-4" aria-hidden="true" />}
           </button>
           <button
             type="button"
-            onClick={onSenderFilter}
-            className="block max-w-full truncate text-left text-xs font-black uppercase tracking-wide text-slate-500 transition hover:text-teal-700"
+            onClick={onRemoveJunk}
+            disabled={disabled}
+            aria-label={`Remove ${message.subject} from review`}
+            title="Remove junk"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-red-200 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300"
           >
-            {message.from}
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2 xl:justify-end">
-          <button type="button" onClick={onRemoveJunk} disabled={disabled} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-600 transition hover:border-red-200 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300">
             {isRemovingJunk ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
-            Remove junk
-          </button>
-          <button type="button" onClick={onGenerate} disabled={disabled} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <PencilLine className="h-4 w-4" aria-hidden="true" />}
-            Generate reply
           </button>
         </div>
       </div>
