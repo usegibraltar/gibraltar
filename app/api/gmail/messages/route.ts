@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getBearerToken, jsonError } from "../../../lib/api";
 import { getFreshAccessToken, listRecentMessages } from "../../../lib/gmail";
+import { loadJunkMessageIds, triageAndStoreMessages } from "../../../lib/gmail-message-store";
 import { getSupabaseAdmin, GmailConnection, requireApprovedUser } from "../../../lib/supabase";
-import { defaultTriage, triageMessages } from "../../../lib/triage";
+import { defaultTriage } from "../../../lib/triage";
 
 export async function GET(request: Request) {
   const auth = await requireApprovedUser(getBearerToken(request));
@@ -33,14 +34,23 @@ export async function GET(request: Request) {
   try {
     const accessToken = await getFreshAccessToken(connection);
     const result = await listRecentMessages(accessToken, { query, pageToken });
-    const triage = await triageMessages(result.messages);
+    const junkMessageIds = await loadJunkMessageIds(
+      auth.user.id,
+      result.messages.map((message) => message.id),
+    );
+    const reviewMessages = result.messages.filter((message) => !junkMessageIds.has(message.id));
+    const triage = await triageAndStoreMessages({
+      user: auth.user,
+      gmailEmail: connection.gmail_email,
+      messages: reviewMessages,
+    });
 
     return NextResponse.json({
       connected: true,
       gmailEmail: connection.gmail_email,
       nextPageToken: result.nextPageToken,
       resultSizeEstimate: result.resultSizeEstimate,
-      messages: result.messages.map((message) => ({
+      messages: reviewMessages.map((message) => ({
         ...message,
         triage: triage.get(message.id) ?? defaultTriage,
       })),

@@ -78,6 +78,91 @@ before update on public.gmail_connections
 for each row
 execute function public.set_updated_at();
 
+create table if not exists public.gmail_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  user_email text not null,
+  gmail_email text not null,
+  gmail_message_id text not null,
+  gmail_thread_id text not null,
+  internal_date text,
+  from_email text,
+  subject text,
+  date_header text,
+  snippet text,
+  triage_category text not null check (triage_category in ('booking', 'pricing', 'complaint', 'follow_up', 'general', 'low_priority')),
+  triage_urgency text not null check (triage_urgency in ('high', 'medium', 'low')),
+  triage_needs_reply boolean not null,
+  triage_reason text not null,
+  triage_model text,
+  is_junk boolean not null default false,
+  junked_at timestamptz,
+  triaged_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.gmail_messages
+  add column if not exists user_id uuid,
+  add column if not exists user_email text,
+  add column if not exists gmail_email text,
+  add column if not exists gmail_message_id text,
+  add column if not exists gmail_thread_id text,
+  add column if not exists internal_date text,
+  add column if not exists from_email text,
+  add column if not exists subject text,
+  add column if not exists date_header text,
+  add column if not exists snippet text,
+  add column if not exists triage_category text,
+  add column if not exists triage_urgency text,
+  add column if not exists triage_needs_reply boolean,
+  add column if not exists triage_reason text,
+  add column if not exists triage_model text,
+  add column if not exists is_junk boolean not null default false,
+  add column if not exists junked_at timestamptz,
+  add column if not exists triaged_at timestamptz not null default now(),
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'gmail_messages_triage_category_check'
+  ) then
+    alter table public.gmail_messages
+      add constraint gmail_messages_triage_category_check
+      check (triage_category in ('booking', 'pricing', 'complaint', 'follow_up', 'general', 'low_priority'));
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'gmail_messages_triage_urgency_check'
+  ) then
+    alter table public.gmail_messages
+      add constraint gmail_messages_triage_urgency_check
+      check (triage_urgency in ('high', 'medium', 'low'));
+  end if;
+end;
+$$;
+
+create unique index if not exists gmail_messages_user_message_id_key
+on public.gmail_messages (user_id, gmail_message_id);
+
+alter table public.gmail_messages enable row level security;
+
+drop policy if exists "No public reads for gmail messages" on public.gmail_messages;
+drop policy if exists "No public writes for gmail messages" on public.gmail_messages;
+
+drop trigger if exists set_gmail_messages_updated_at on public.gmail_messages;
+
+create trigger set_gmail_messages_updated_at
+before update on public.gmail_messages
+for each row
+execute function public.set_updated_at();
+
 create table if not exists public.business_profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique,

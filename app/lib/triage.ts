@@ -18,6 +18,14 @@ export type MessageTriage = {
   reason: string;
 };
 
+export type TriageSource = "ai" | "cache" | "fallback";
+
+export type TriageMessagesResult = {
+  triage: Map<string, MessageTriage>;
+  sources: Map<string, TriageSource>;
+  model: string | null;
+};
+
 export const defaultTriage: MessageTriage = {
   category: "general",
   urgency: "low",
@@ -65,7 +73,7 @@ type TriageResponse = {
   messages: Array<{ id: string } & MessageTriage>;
 };
 
-const triageCache = new Map<string, MessageTriage>();
+const triageCache = new Map<string, { triage: MessageTriage; model: string | null }>();
 const maxCacheEntries = 500;
 
 function compactMessage(message: GmailMessageSummary) {
@@ -83,8 +91,8 @@ function cacheKey(message: GmailMessageSummary) {
   return [compact.id, compact.from, compact.subject, compact.snippet].join("|");
 }
 
-function cacheTriage(key: string, triage: MessageTriage) {
-  triageCache.set(key, triage);
+function cacheTriage(key: string, triage: MessageTriage, model: string | null) {
+  triageCache.set(key, { triage, model });
 
   if (triageCache.size > maxCacheEntries) {
     const oldestKey = triageCache.keys().next().value;
@@ -95,7 +103,16 @@ function cacheTriage(key: string, triage: MessageTriage) {
   }
 }
 
-function normalizeTriage(value: Partial<MessageTriage> | undefined): MessageTriage {
+export function normalizeTriage(
+  value:
+    | {
+        category?: unknown;
+        urgency?: unknown;
+        needsReply?: unknown;
+        reason?: unknown;
+      }
+    | undefined,
+): MessageTriage {
   return {
     category: categories.includes(value?.category as TriageCategory)
       ? (value?.category as TriageCategory)
@@ -110,14 +127,25 @@ function normalizeTriage(value: Partial<MessageTriage> | undefined): MessageTria
   };
 }
 
-export async function triageMessages(messages: GmailMessageSummary[]) {
-  const fallback = new Map(messages.map((message) => [message.id, defaultTriage]));
+function getTriageModel() {
+  return process.env.OPENAI_TRIAGE_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-5.4-mini";
+}
+
+export async function triageMessagesWithMetadata(
+  messages: GmailMessageSummary[],
+): Promise<TriageMessagesResult> {
+  const fallbackTriage = new Map(messages.map((message) => [message.id, defaultTriage]));
+  const fallbackSources = new Map(messages.map((message) => [message.id, "fallback" as TriageSource]));
   const cached = new Map<string, MessageTriage>();
+  const sources = new Map<string, TriageSource>();
+  let model: string | null = null;
   const uncached = messages.filter((message) => {
     const existing = triageCache.get(cacheKey(message));
 
     if (existing) {
-      cached.set(message.id, existing);
+      cached.set(message.id, existing.triage);
+      sources.set(message.id, "cache");
+      model = model ?? existing.model;
       return false;
     }
 
@@ -125,18 +153,23 @@ export async function triageMessages(messages: GmailMessageSummary[]) {
   });
 
   if (!uncached.length) {
-    return new Map(messages.map((message) => [message.id, cached.get(message.id) ?? defaultTriage]));
+    return {
+      triage: new Map(messages.map((message) => [message.id, cached.get(message.id) ?? defaultTriage])),
+      sources,
+      model,
+    };
   }
 
   if (!process.env.OPENAI_API_KEY) {
-    return fallback;
+    return { triage: fallbackTriage, sources: fallbackSources, model: null };
   }
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const requestedModel = getTriageModel();
 
   try {
     const response = await client.responses.create({
-      model: process.env.OPENAI_TRIAGE_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-5.4-mini",
+      model: requestedModel,
       input: [
         {
           role: "system",
@@ -166,19 +199,39 @@ export async function triageMessages(messages: GmailMessageSummary[]) {
     const byId = new Map(parsed.messages.map((message) => [message.id, normalizeTriage(message)]));
     const scanned = new Map(
       uncached.map((message) => {
-        const triage = byId.get(message.id) ?? defaultTriage;
+        const triage = byId.get(message.id);
 
-        cacheTriage(cacheKey(message), triage);
+        if (!triage) {
+          sources.set(message.id, "fallback");
+          return [message.id, defaultTriage] as const;
+        }
+
+        cacheTriage(cacheKey(message), triage, requestedModel);
+        sources.set(message.id, "ai");
 
         return [message.id, triage] as const;
       }),
     );
 
-    return new Map(messages.map((message) => [message.id, cached.get(message.id) ?? scanned.get(message.id) ?? defaultTriage]));
+    return {
+      triage: new Map(
+        messages.map((message) => [
+          message.id,
+          cached.get(message.id) ?? scanned.get(message.id) ?? defaultTriage,
+        ]),
+      ),
+      sources,
+      model: requestedModel,
+    };
   } catch (error) {
     console.error("AI email triage failed", error);
-    return fallback;
+    return { triage: fallbackTriage, sources: fallbackSources, model: null };
   }
+}
+
+export async function triageMessages(messages: GmailMessageSummary[]) {
+  const result = await triageMessagesWithMetadata(messages);
+  return result.triage;
 }
 
 export async function triageMessage(message: GmailMessageSummary) {
