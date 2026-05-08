@@ -6,6 +6,7 @@ import Image from "next/image";
 import {
   ArrowRight,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   CircleAlert,
   History,
@@ -19,6 +20,7 @@ import {
   Search,
   Settings,
   Sparkles,
+  Trash2,
   Unplug,
   X,
 } from "lucide-react";
@@ -149,6 +151,27 @@ type SearchChip = {
   query: string;
 };
 
+type InboxFilter = "all" | "needs_reply" | TriageCategory;
+
+type InboxFilterOption = {
+  label: string;
+  value: InboxFilter;
+};
+
+const primaryInboxFilters: InboxFilterOption[] = [
+  { label: "All", value: "all" },
+  { label: "Needs reply", value: "needs_reply" },
+  { label: "Booking", value: "booking" },
+  { label: "Pricing", value: "pricing" },
+];
+
+const moreInboxFilters: InboxFilterOption[] = [
+  { label: "Issues", value: "complaint" },
+  { label: "Follow-up", value: "follow_up" },
+  { label: "General", value: "general" },
+  { label: "Low priority", value: "low_priority" },
+];
+
 const searchChips: SearchChip[] = [
   { label: "Unread", query: "is:unread" },
   { label: "This week", query: "newer_than:7d" },
@@ -157,6 +180,9 @@ const searchChips: SearchChip[] = [
   { label: "Has attachment", query: "has:attachment" },
   { label: "Needs reply", query: "-from:me newer_than:30d" },
 ];
+
+const primarySearchChips = searchChips.slice(0, 3);
+const moreSearchChips = searchChips.slice(3);
 
 const emptyProfile: BusinessProfile = {
   businessName: "",
@@ -193,6 +219,7 @@ export default function AppPage() {
   const [isGeneratingReply, setIsGeneratingReply] = useState("");
   const [isDrafting, setIsDrafting] = useState("");
   const [isLoadingMessageDetail, setIsLoadingMessageDetail] = useState("");
+  const [isRemovingJunk, setIsRemovingJunk] = useState("");
   const [isCreatingReminder, setIsCreatingReminder] = useState("");
   const [isCompletingReminder, setIsCompletingReminder] = useState("");
   const [reviewMessageId, setReviewMessageId] = useState("");
@@ -204,9 +231,10 @@ export default function AppPage() {
   const [reviewVariantInstruction, setReviewVariantInstruction] = useState("");
   const [reviewSources, setReviewSources] = useState<ReplySources | null>(null);
   const [reviewTriage, setReviewTriage] = useState<MessageTriage | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"all" | "needs_reply" | TriageCategory>("all");
+  const [activeFilter, setActiveFilter] = useState<InboxFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [senderFilter, setSenderFilter] = useState("");
+  const [openFilterMenu, setOpenFilterMenu] = useState<"inbox" | "search" | null>(null);
   const [latestReply, setLatestReply] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<SelectedMessage | null>(null);
   const [selectedDraftEvent, setSelectedDraftEvent] = useState<DraftEvent | null>(null);
@@ -605,6 +633,36 @@ export default function AppPage() {
     }
   }
 
+  async function removeJunk(message: GmailMessage) {
+    setIsRemovingJunk(message.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await authedFetch(`/api/gmail/messages/${encodeURIComponent(message.id)}/junk`, {
+        method: "POST",
+      });
+      const body = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(body.error ?? "Could not remove that message from review.");
+      }
+
+      setPayload((current) => ({
+        ...current,
+        messages: current.messages.filter((currentMessage) => currentMessage.id !== message.id),
+      }));
+      if (selectedMessage?.id === message.id) {
+        setSelectedMessage(null);
+      }
+      setSuccess("Message removed from Gibraltar review.");
+    } catch (junkError) {
+      setError(junkError instanceof Error ? junkError.message : "Could not remove that message from review.");
+    } finally {
+      setIsRemovingJunk("");
+    }
+  }
+
   async function createDraft(messageId: string, reply: string, sendNow = false) {
     setIsDrafting(messageId);
     setError("");
@@ -737,6 +795,7 @@ export default function AppPage() {
   function applySearchChip(query: string) {
     setSearchQuery(query);
     setSenderFilter("");
+    setOpenFilterMenu(null);
     void loadMessages(accessToken, query);
   }
 
@@ -843,7 +902,13 @@ export default function AppPage() {
           <section className="flex max-h-[78vh] min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:max-h-[calc(100vh-8rem)]">
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-5">
               <div>
-                <p className="text-sm font-black uppercase text-teal-600">Inbox</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-black uppercase text-teal-600">Inbox</p>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs font-black uppercase text-blue-700">
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    AI triage
+                  </span>
+                </div>
                 <h2 className="text-2xl font-black">Choose a message</h2>
                 {payload.connected ? (
                   <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -902,30 +967,71 @@ export default function AppPage() {
                 ) : null}
               </div>
             </form>
-            <div className="brand-scrollbar-horizontal flex gap-2 overflow-x-auto border-b border-slate-100 px-5 py-3">
-              <FilterButton label="All" active={activeFilter === "all"} onClick={() => setActiveFilter("all")} />
-              <FilterButton label="Needs reply" active={activeFilter === "needs_reply"} onClick={() => setActiveFilter("needs_reply")} />
-              <FilterButton label="Booking" active={activeFilter === "booking"} onClick={() => setActiveFilter("booking")} />
-              <FilterButton label="Pricing" active={activeFilter === "pricing"} onClick={() => setActiveFilter("pricing")} />
-              <FilterButton label="Issues" active={activeFilter === "complaint"} onClick={() => setActiveFilter("complaint")} />
-              <FilterButton label="Follow-up" active={activeFilter === "follow_up"} onClick={() => setActiveFilter("follow_up")} />
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-100 px-5 py-3">
+              <div className="flex flex-wrap gap-2">
+                {primaryInboxFilters.map((filter) => (
+                  <FilterButton
+                    key={filter.value}
+                    label={filter.label}
+                    active={activeFilter === filter.value}
+                    onClick={() => {
+                      setActiveFilter(filter.value);
+                      setOpenFilterMenu(null);
+                    }}
+                  />
+                ))}
+              </div>
+              <FilterMenu
+                label="More inbox filters"
+                open={openFilterMenu === "inbox"}
+                onToggle={() => setOpenFilterMenu((current) => (current === "inbox" ? null : "inbox"))}
+              >
+                {moreInboxFilters.map((filter) => (
+                  <FilterMenuItem
+                    key={filter.value}
+                    label={filter.label}
+                    active={activeFilter === filter.value}
+                    onClick={() => {
+                      setActiveFilter(filter.value);
+                      setOpenFilterMenu(null);
+                    }}
+                  />
+                ))}
+              </FilterMenu>
             </div>
-            <div className="brand-scrollbar-horizontal flex gap-2 overflow-x-auto border-b border-slate-100 px-5 py-3">
-              {searchChips.map((chip) => (
-                <button
-                  key={chip.label}
-                  type="button"
-                  onClick={() => applySearchChip(chip.query)}
-                  disabled={isLoading || !payload.connected}
-                  className={`min-h-9 shrink-0 rounded-xl border px-3 text-sm font-black transition disabled:cursor-not-allowed disabled:text-slate-300 ${
-                    searchQuery === chip.query
-                      ? "border-teal-200 bg-teal-50 text-teal-800"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700"
-                  }`}
-                >
-                  {chip.label}
-                </button>
-              ))}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-100 px-5 py-3">
+              <div className="flex flex-wrap gap-2">
+                {primarySearchChips.map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => applySearchChip(chip.query)}
+                    disabled={isLoading || !payload.connected}
+                    className={`min-h-9 shrink-0 rounded-xl border px-3 text-sm font-black transition disabled:cursor-not-allowed disabled:text-slate-300 ${
+                      searchQuery === chip.query
+                        ? "border-teal-200 bg-teal-50 text-teal-800"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700"
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+              <FilterMenu
+                label="More Gmail filters"
+                open={openFilterMenu === "search"}
+                onToggle={() => setOpenFilterMenu((current) => (current === "search" ? null : "search"))}
+              >
+                {moreSearchChips.map((chip) => (
+                  <FilterMenuItem
+                    key={chip.label}
+                    label={chip.label}
+                    active={searchQuery === chip.query}
+                    disabled={isLoading || !payload.connected}
+                    onClick={() => applySearchChip(chip.query)}
+                  />
+                ))}
+              </FilterMenu>
             </div>
             <div className="brand-scrollbar min-h-0 flex-1 overflow-y-auto">
               {isLoading ? (
@@ -941,10 +1047,12 @@ export default function AppPage() {
                         message={message}
                         busy={isGeneratingReply === message.id}
                         isOpening={isLoadingMessageDetail === message.id}
-                        disabled={Boolean(isDrafting || isGeneratingReply)}
+                        isRemovingJunk={isRemovingJunk === message.id}
+                        disabled={Boolean(isDrafting || isGeneratingReply || isRemovingJunk)}
                         onOpen={() => openMessage(message)}
                         onSenderFilter={() => setSenderFilter(message.from)}
                         onGenerate={() => generateReply(message)}
+                        onRemoveJunk={() => removeJunk(message)}
                       />
                     )) : <EmptyState title="No messages in this view" body="Try another filter, search Gmail, or load more results." />}
                   </div>
@@ -1145,7 +1253,7 @@ export default function AppPage() {
       ) : null}
 
       {selectedMessage ? (
-        <Modal title="Quick read" onClose={() => setSelectedMessage(null)} wide>
+        <Modal title="Message details" onClose={() => setSelectedMessage(null)} wide>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-black uppercase text-teal-600">From</p>
@@ -1313,7 +1421,7 @@ function ThreadMessage({ message, selected }: { message: GmailThreadMessage; sel
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase text-teal-700">
-            {sent ? "Business reply" : "Customer message"}{selected ? " · selected" : ""}
+            {sent ? "Business reply" : "Customer message"}{selected ? " - selected" : ""}
           </p>
           <p className="mt-1 truncate text-sm font-black text-slate-950">{message.from}</p>
         </div>
@@ -1392,63 +1500,130 @@ function FilterButton({ label, active, onClick }: { label: string; active: boole
   );
 }
 
+function FilterMenu({
+  label,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={label}
+        aria-expanded={open}
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+          open
+            ? "border-teal-200 bg-teal-50 text-teal-800"
+            : "border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700"
+        }`}
+      >
+        <ChevronRight className={`h-5 w-5 transition-transform duration-200 ${open ? "rotate-90" : ""}`} aria-hidden="true" />
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-11 z-20 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-950/10">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FilterMenuItem({
+  label,
+  active,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`block min-h-10 w-full px-3 text-left text-sm font-black transition disabled:cursor-not-allowed disabled:text-slate-300 ${
+        active ? "bg-teal-50 text-teal-800" : "bg-white text-slate-600 hover:bg-slate-50 hover:text-teal-700"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function MessageRow({
   message,
   busy,
   isOpening,
+  isRemovingJunk,
   disabled,
   onOpen,
   onSenderFilter,
   onGenerate,
+  onRemoveJunk,
 }: {
   message: GmailMessage;
   busy: boolean;
   isOpening: boolean;
+  isRemovingJunk: boolean;
   disabled: boolean;
   onOpen: () => void;
   onSenderFilter: () => void;
   onGenerate: () => void;
+  onRemoveJunk: () => void;
 }) {
+  const needsReply = message.triage?.needsReply ?? true;
+
   return (
-    <article className="p-5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="min-w-0">
-          <button type="button" onClick={onOpen} className="block max-w-full text-left">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate font-black text-slate-950">{message.subject}</p>
-              {message.triage ? <TriageBadges triage={message.triage} /> : null}
+    <article className={`border-l-4 transition hover:bg-slate-50 ${needsReply ? "border-l-orange-400 bg-orange-50/60" : "border-l-transparent bg-white"}`}>
+      <div className="grid gap-3 px-4 py-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="grid min-w-0 gap-2">
+          <button type="button" onClick={onOpen} className="grid min-w-0 gap-2 text-left">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <p className="min-w-0 flex-1 truncate font-black text-slate-950">{message.subject}</p>
+              {message.triage ? <TriageBadges triage={message.triage} compact /> : null}
+              {isOpening ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-teal-100 px-2 py-1 text-xs font-black uppercase text-teal-800">
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  Opening
+                </span>
+              ) : null}
             </div>
+            <p className="line-clamp-1 text-sm leading-5 text-slate-500">{message.snippet || "No preview available."}</p>
           </button>
           <button
             type="button"
             onClick={onSenderFilter}
-            className="mt-1 block max-w-full truncate text-left text-sm font-semibold text-slate-600 transition hover:text-teal-700"
+            className="block max-w-full truncate text-left text-xs font-black uppercase tracking-wide text-slate-500 transition hover:text-teal-700"
           >
             {message.from}
           </button>
-          <button type="button" onClick={onOpen} className="block max-w-full text-left">
-            <p className="mt-3 line-clamp-2 leading-6 text-slate-500">{message.snippet}</p>
-            {message.triage?.reason ? (
-              <p className="mt-2 text-sm font-semibold text-slate-500">{message.triage.reason}</p>
-            ) : null}
-            {isOpening ? (
-              <span className="mt-2 inline-flex items-center gap-2 text-sm font-black text-teal-700">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Opening
-              </span>
-            ) : null}
+        </div>
+        <div className="flex flex-wrap gap-2 xl:justify-end">
+          <button type="button" onClick={onRemoveJunk} disabled={disabled} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-600 transition hover:border-red-200 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300">
+            {isRemovingJunk ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+            Remove junk
+          </button>
+          <button type="button" onClick={onGenerate} disabled={disabled} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <PencilLine className="h-4 w-4" aria-hidden="true" />}
+            Generate reply
           </button>
         </div>
-        <button type="button" onClick={onGenerate} disabled={disabled} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-5 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <PencilLine className="h-4 w-4" aria-hidden="true" />}
-          Generate reply
-        </button>
       </div>
     </article>
   );
 }
 
-function TriageBadges({ triage }: { triage: MessageTriage }) {
+function TriageBadges({ triage, compact = false }: { triage: MessageTriage; compact?: boolean }) {
   const categoryLabels: Record<TriageCategory, string> = {
     booking: "Booking",
     pricing: "Pricing",
@@ -1465,12 +1640,19 @@ function TriageBadges({ triage }: { triage: MessageTriage }) {
 
   return (
     <>
+      {triage.needsReply ? (
+        <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs font-black uppercase text-orange-800">
+          Needs Reply
+        </span>
+      ) : null}
       <span className="shrink-0 rounded-full bg-teal-100 px-2 py-1 text-xs font-black uppercase text-teal-800">
         {categoryLabels[triage.category]}
       </span>
-      <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-black uppercase ${urgencyClasses[triage.urgency]}`}>
-        {triage.urgency}
-      </span>
+      {!compact ? (
+        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-black uppercase ${urgencyClasses[triage.urgency]}`}>
+          {triage.urgency}
+        </span>
+      ) : null}
       {!triage.needsReply ? (
         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-black uppercase text-slate-600">
           No reply

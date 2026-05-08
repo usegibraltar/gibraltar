@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getBearerToken, jsonError } from "../../../../lib/api";
 import { getFreshAccessToken, getMessageDetail, getThreadDetail } from "../../../../lib/gmail";
+import { triageAndStoreMessages } from "../../../../lib/gmail-message-store";
 import { getSupabaseAdmin, GmailConnection, requireApprovedUser } from "../../../../lib/supabase";
-import { triageMessage } from "../../../../lib/triage";
+import { defaultTriage } from "../../../../lib/triage";
 
 type Params = {
   params: Promise<{
@@ -37,11 +38,16 @@ export async function GET(request: Request, { params }: Params) {
     const accessToken = await getFreshAccessToken(connection);
     const message = await getMessageDetail(accessToken, id);
     const thread = await getThreadDetail(accessToken, message.threadId);
+    const triage = await triageAndStoreMessages({
+      user: auth.user,
+      gmailEmail: connection.gmail_email,
+      messages: [message],
+    });
 
     return NextResponse.json({
       message: {
         ...message,
-        triage: triageMessage(message),
+        triage: triage.get(message.id) ?? defaultTriage,
       },
       thread,
     });

@@ -10,6 +10,7 @@ Approved Gmail users and draft events are stored in:
 
 ```text
 public.gmail_connections
+public.gmail_messages
 public.gmail_draft_events
 public.business_profiles
 public.follow_up_reminders
@@ -47,6 +48,12 @@ page or by changing the row to `status = 'approved'`.
   `GMAIL_TOKEN_ENCRYPTION_KEY` to a long random secret before connecting Gmail.
 - Google sign-in for app login is configured in Supabase Auth providers. It is
   separate from the direct Gmail OAuth connection used to create Gmail drafts.
+- Gmail message summaries and AI triage are stored in `public.gmail_messages`.
+  This lets Gibraltar reuse triage on later app loads instead of sending the
+  same message back to AI.
+- Messages marked as junk are hidden from Gibraltar review by setting
+  `public.gmail_messages.is_junk`; this does not delete or modify the message in
+  Gmail.
 - Business profiles store lightweight context used to improve generated Gmail
   drafts. Users can edit their own context from the app workspace.
 - Follow-up reminders are manual reminders only. They do not send emails or
