@@ -900,7 +900,7 @@ export default function AppPage() {
         {showTour ? <FirstRunTour onDismiss={dismissTour} /> : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-          <section className="flex max-h-[78vh] min-h-[36rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:max-h-[calc(100vh-8rem)]">
+          <section className="flex max-h-[90vh] min-h-[44rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:max-h-[calc(100vh-3rem)]">
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 p-5">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1584,10 +1584,10 @@ function MessageRow({
 
   return (
     <article className={`border-l-4 transition hover:bg-slate-50 ${needsReply ? "border-l-orange-400 bg-orange-50/60" : "border-l-transparent bg-white"}`}>
-      <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] gap-3 px-4 py-4">
+      <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] gap-4 px-5 py-5">
         <button type="button" onClick={onOpen} className="grid min-w-0 gap-3 text-left">
-          <div className="grid min-w-0 gap-2">
-            <p className="text-base font-black leading-6 text-slate-950 sm:text-lg sm:leading-7">{brief}</p>
+          <div className="grid min-w-0 gap-3">
+            <p className="text-base font-black leading-7 text-slate-950 sm:text-lg sm:leading-8">{brief}</p>
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
               <span className="min-w-0 max-w-full truncate font-bold text-slate-600">{message.from}</span>
               <span className="min-w-0 max-w-full truncate">{message.subject}</span>
