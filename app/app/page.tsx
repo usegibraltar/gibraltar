@@ -9,16 +9,13 @@ import {
   ChevronRight,
   Clock3,
   CircleAlert,
-  History,
   Loader2,
   LogOut,
   Mail,
   PencilLine,
   RefreshCw,
   RotateCcw,
-  Save,
   Search,
-  Settings,
   Sparkles,
   Trash2,
   Unplug,
@@ -79,32 +76,6 @@ type MessagesPayload = {
   error?: string;
 };
 
-type DraftEvent = {
-  id: string;
-  source_subject: string | null;
-  draft_id: string | null;
-  draft_message_id?: string | null;
-  reply_snapshot?: string | null;
-  variant_label?: string | null;
-  variant_instruction?: string | null;
-  sent_at?: string | null;
-  sent_message_id?: string | null;
-  status: "created" | "failed";
-  error_message: string | null;
-  created_at: string;
-};
-
-type FollowUpReminder = {
-  id: string;
-  source_subject: string | null;
-  source_message_id: string;
-  source_thread_id: string | null;
-  due_at: string;
-  status: "pending" | "completed";
-  created_at: string;
-  completed_at: string | null;
-};
-
 type BusinessProfile = {
   businessName: string;
   businessType: string;
@@ -117,13 +88,6 @@ type BusinessProfile = {
   voiceProfile: string;
   voiceSampleCount?: number;
   voiceLearnedAt?: string | null;
-};
-
-type VoiceSample = {
-  id: string;
-  subject: string;
-  snippet: string;
-  body: string;
 };
 
 type DraftPayload = {
@@ -205,24 +169,15 @@ export default function AppPage() {
   const [userEmail, setUserEmail] = useState("");
   const [payload, setPayload] = useState<MessagesPayload>({ connected: false, messages: [] });
   const [profile, setProfile] = useState<BusinessProfile>(emptyProfile);
-  const [history, setHistory] = useState<DraftEvent[]>([]);
-  const [reminders, setReminders] = useState<FollowUpReminder[]>([]);
-  const [voiceSamples, setVoiceSamples] = useState<VoiceSample[]>([]);
-  const [selectedVoiceSampleIds, setSelectedVoiceSampleIds] = useState<string[]>([]);
-  const [activeModal, setActiveModal] = useState<"context" | "voice" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isLoadingSamples, setIsLoadingSamples] = useState(false);
-  const [isLearningVoice, setIsLearningVoice] = useState(false);
   const [isGeneratingReply, setIsGeneratingReply] = useState("");
   const [isDrafting, setIsDrafting] = useState("");
   const [isLoadingMessageDetail, setIsLoadingMessageDetail] = useState("");
   const [isRemovingJunk, setIsRemovingJunk] = useState("");
   const [isCreatingReminder, setIsCreatingReminder] = useState("");
-  const [isCompletingReminder, setIsCompletingReminder] = useState("");
   const [reviewMessageId, setReviewMessageId] = useState("");
   const [reviewThreadId, setReviewThreadId] = useState("");
   const [reviewMessageSubject, setReviewMessageSubject] = useState("");
@@ -238,10 +193,10 @@ export default function AppPage() {
   const [openFilterMenu, setOpenFilterMenu] = useState<"inbox" | "search" | null>(null);
   const [latestReply, setLatestReply] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<SelectedMessage | null>(null);
-  const [selectedDraftEvent, setSelectedDraftEvent] = useState<DraftEvent | null>(null);
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
   const [onboardingEvents, setOnboardingEvents] = useState<string[]>([]);
   const [showTour, setShowTour] = useState(false);
+  const [setupChecklistDismissed, setSetupChecklistDismissed] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -325,19 +280,6 @@ export default function AppPage() {
     }
   }, [accessToken, authedFetch]);
 
-  const loadHistory = useCallback(async () => {
-    if (!accessToken) {
-      return;
-    }
-
-    const response = await authedFetch("/api/gmail/history");
-    const body = (await response.json()) as { events?: DraftEvent[] };
-
-    if (response.ok) {
-      setHistory(body.events ?? []);
-    }
-  }, [accessToken, authedFetch]);
-
   const loadOnboarding = useCallback(async () => {
     if (!accessToken) {
       return;
@@ -348,19 +290,6 @@ export default function AppPage() {
 
     if (response.ok) {
       setOnboardingEvents((body.events ?? []).map((event) => event.event_key));
-    }
-  }, [accessToken, authedFetch]);
-
-  const loadReminders = useCallback(async () => {
-    if (!accessToken) {
-      return;
-    }
-
-    const response = await authedFetch("/api/follow-ups");
-    const body = (await response.json()) as { reminders?: FollowUpReminder[] };
-
-    if (response.ok) {
-      setReminders(body.reminders ?? []);
     }
   }, [accessToken, authedFetch]);
 
@@ -385,13 +314,12 @@ export default function AppPage() {
 
   useEffect(() => {
     void loadProfile();
-    void loadHistory();
     void loadOnboarding();
-    void loadReminders();
-  }, [loadHistory, loadOnboarding, loadProfile, loadReminders]);
+  }, [loadOnboarding, loadProfile]);
 
   useEffect(() => {
     setShowTour(window.localStorage.getItem("gibraltar_onboarding_dismissed") !== "true");
+    setSetupChecklistDismissed(window.localStorage.getItem("gibraltar_setup_checklist_dismissed") === "true");
   }, []);
 
   useEffect(() => {
@@ -449,103 +377,6 @@ export default function AppPage() {
       setError(disconnectError instanceof Error ? disconnectError.message : "Could not disconnect Gmail.");
     } finally {
       setIsDisconnecting(false);
-    }
-  }
-
-  async function saveProfile(closeAfterSave = false) {
-    setIsSavingProfile(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const response = await authedFetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
-      });
-      const body = (await response.json()) as { error?: string };
-
-      if (!response.ok) {
-        throw new Error(body.error ?? "Could not save business context.");
-      }
-
-      setSuccess("Business context saved.");
-      if (closeAfterSave) {
-        setActiveModal(null);
-      }
-    } catch (profileError) {
-      setError(profileError instanceof Error ? profileError.message : "Could not save business context.");
-    } finally {
-      setIsSavingProfile(false);
-    }
-  }
-
-  async function loadVoiceSamples() {
-    setIsLoadingSamples(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const response = await authedFetch("/api/voice/samples");
-      const body = (await response.json()) as { samples?: VoiceSample[]; error?: string };
-
-      if (!response.ok) {
-        throw new Error(body.error ?? "Could not load sent email samples.");
-      }
-
-      const samples = body.samples ?? [];
-      setVoiceSamples(samples);
-      setSelectedVoiceSampleIds(samples.slice(0, 8).map((sample) => sample.id));
-      setSuccess("Sent replies loaded for review.");
-    } catch (sampleError) {
-      setError(sampleError instanceof Error ? sampleError.message : "Could not load sent email samples.");
-    } finally {
-      setIsLoadingSamples(false);
-    }
-  }
-
-  function toggleVoiceSample(id: string) {
-    setSelectedVoiceSampleIds((current) =>
-      current.includes(id) ? current.filter((sampleId) => sampleId !== id) : [...current, id],
-    );
-  }
-
-  async function learnVoice() {
-    setIsLearningVoice(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const selectedSamples = voiceSamples
-        .filter((sample) => selectedVoiceSampleIds.includes(sample.id))
-        .map((sample) => ({ subject: sample.subject, body: sample.body }));
-      const response = await authedFetch("/api/voice/learn", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ samples: selectedSamples }),
-      });
-      const body = (await response.json()) as {
-        voiceProfile?: string;
-        voiceSampleCount?: number;
-        voiceLearnedAt?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !body.voiceProfile) {
-        throw new Error(body.error ?? "Could not learn owner voice.");
-      }
-
-      setProfile({
-        ...profile,
-        voiceProfile: body.voiceProfile,
-        voiceSampleCount: body.voiceSampleCount ?? selectedSamples.length,
-        voiceLearnedAt: body.voiceLearnedAt ?? new Date().toISOString(),
-      });
-      setSuccess("Owner voice learned and saved.");
-    } catch (voiceError) {
-      setError(voiceError instanceof Error ? voiceError.message : "Could not learn owner voice.");
-    } finally {
-      setIsLearningVoice(false);
     }
   }
 
@@ -698,7 +529,6 @@ export default function AppPage() {
       setReviewTriage(null);
       setReviewVariantLabel("Original");
       setReviewVariantInstruction("");
-      await loadHistory();
       await saveOnboardingEvent("first_email_created");
     } catch (draftError) {
       setError(friendlyErrorMessage(draftError, "Could not create Gmail draft."));
@@ -752,34 +582,11 @@ export default function AppPage() {
         throw new Error(body.error ?? "Could not save follow-up reminder.");
       }
 
-      setSuccess("Follow-up reminder saved.");
-      await loadReminders();
+      setSuccess("Follow-up reminder saved. You can manage it from Activity.");
     } catch (reminderError) {
       setError(reminderError instanceof Error ? reminderError.message : "Could not save follow-up reminder.");
     } finally {
       setIsCreatingReminder("");
-    }
-  }
-
-  async function completeReminder(id: string) {
-    setIsCompletingReminder(id);
-    setError("");
-
-    try {
-      const response = await authedFetch(`/api/follow-ups/${id}/complete`, {
-        method: "POST",
-      });
-      const body = (await response.json()) as { error?: string };
-
-      if (!response.ok) {
-        throw new Error(body.error ?? "Could not complete follow-up reminder.");
-      }
-
-      await loadReminders();
-    } catch (completeError) {
-      setError(completeError instanceof Error ? completeError.message : "Could not complete follow-up reminder.");
-    } finally {
-      setIsCompletingReminder("");
     }
   }
 
@@ -826,9 +633,11 @@ export default function AppPage() {
     { label: "Connect Gmail", done: payload.connected, action: "Connect", href: null },
     { label: "Add business context", done: Boolean(profile.businessName || profile.services), action: "Open settings", href: "/settings" },
     { label: "Learn owner voice", done: Boolean(profile.voiceProfile), action: "Open settings", href: "/settings" },
-    { label: "Generate a first reply", done: onboardingEvents.includes("first_reply_generated") || Boolean(reviewReply || latestReply || history.length), action: "Choose email", href: null },
-    { label: "Create or send first email", done: onboardingEvents.includes("first_email_created") || history.some((event) => event.status === "created"), action: "Review draft", href: null },
+    { label: "Generate a first reply", done: onboardingEvents.includes("first_reply_generated") || Boolean(reviewReply || latestReply), action: "Choose email", href: null },
+    { label: "Create or send first email", done: onboardingEvents.includes("first_email_created") || Boolean(latestReply), action: "Review draft", href: null },
   ];
+  const setupComplete = setupItems.every((item) => item.done);
+  const showSetupChecklist = !setupComplete || !setupChecklistDismissed;
 
   return (
     <main className="min-h-screen bg-[#f8fbff] text-[#0b132b]">
@@ -847,6 +656,9 @@ export default function AppPage() {
             </Link>
             <Link href="/analytics" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
               Analytics
+            </Link>
+            <Link href="/activity" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
+              Activity
             </Link>
             <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
               Settings
@@ -873,8 +685,6 @@ export default function AppPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <ActionButton icon={Settings} label="Business context" onClick={() => setActiveModal("context")} active={Boolean(profile.businessName || profile.services)} />
-              <ActionButton icon={Sparkles} label="Learn voice" onClick={() => setActiveModal("voice")} active={Boolean(profile.voiceProfile)} />
               <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 px-4 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:hover:translate-y-0">
                 {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
                 {payload.connected ? "Reconnect Gmail" : "Connect Gmail"}
@@ -896,7 +706,17 @@ export default function AppPage() {
         {error ? <PageNotice tone="error" text={error} /> : null}
         {success ? <PageNotice tone="success" text={success} /> : null}
 
-        <SetupChecklist items={setupItems} onConnect={connectGmail} />
+        {showSetupChecklist ? (
+          <SetupChecklist
+            items={setupItems}
+            onConnect={connectGmail}
+            completed={setupComplete}
+            onDismiss={() => {
+              window.localStorage.setItem("gibraltar_setup_checklist_dismissed", "true");
+              setSetupChecklistDismissed(true);
+            }}
+          />
+        ) : null}
         {showTour ? <FirstRunTour onDismiss={dismissTour} /> : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
@@ -1132,126 +952,13 @@ export default function AppPage() {
                   <p className="mx-auto mt-2 max-w-md leading-7 text-slate-600">
                     Generate a reply from the inbox, edit it here, then create the Gmail draft when it looks right.
                   </p>
-                  {!(profile.businessName || profile.services) ? (
-                    <Link href="/settings" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-teal-200 bg-white px-4 text-sm font-black text-teal-800 transition hover:-translate-y-0.5">
-                      Add business context
-                    </Link>
-                  ) : null}
                 </div>
               </div>
             )}
           </section>
         </div>
 
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section>
-              <div className="flex items-center gap-2">
-                <Clock3 className="h-5 w-5 text-teal-700" aria-hidden="true" />
-                <h2 className="text-2xl font-black">Follow-ups</h2>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {reminders.filter((reminder) => reminder.status === "pending").length ? (
-                  reminders
-                    .filter((reminder) => reminder.status === "pending")
-                    .map((reminder) => (
-                      <ReminderItem
-                        key={reminder.id}
-                        reminder={reminder}
-                        busy={isCompletingReminder === reminder.id}
-                        onComplete={() => completeReminder(reminder.id)}
-                      />
-                    ))
-                ) : (
-                  <p className="leading-7 text-slate-600">Follow-up reminders will appear here.</p>
-                )}
-              </div>
-            </section>
-            <section>
-              <div className="flex items-center gap-2">
-                <History className="h-5 w-5 text-teal-700" aria-hidden="true" />
-                <h2 className="text-2xl font-black">Draft history</h2>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {history.length ? history.map((event) => (
-                  <HistoryItem key={event.id} event={event} onOpen={() => setSelectedDraftEvent(event)} />
-                )) : (
-                  <p className="leading-7 text-slate-600">Draft events will appear here after you create them.</p>
-                )}
-              </div>
-            </section>
-          </div>
-        </section>
       </section>
-
-      {activeModal === "context" ? (
-        <Modal title="Business context" onClose={() => setActiveModal(null)}>
-          <p className="text-sm leading-6 text-slate-600">This context improves every generated reply.</p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <ProfileInput label="Business name" value={profile.businessName} onChange={(value) => setProfile({ ...profile, businessName: value })} />
-            <ProfileInput label="Business type" value={profile.businessType} onChange={(value) => setProfile({ ...profile, businessType: value })} />
-            <ProfileInput label="Preferred tone" value={profile.replyTone} onChange={(value) => setProfile({ ...profile, replyTone: value })} />
-            <ProfileInput label="Booking link" value={profile.bookingLink} onChange={(value) => setProfile({ ...profile, bookingLink: value })} />
-            <ProfileInput label="Phone" value={profile.phone} onChange={(value) => setProfile({ ...profile, phone: value })} />
-            <ProfileInput label="Hours" value={profile.hours} onChange={(value) => setProfile({ ...profile, hours: value })} />
-            <div className="sm:col-span-2">
-              <ProfileTextarea label="Services/products" value={profile.services} onChange={(value) => setProfile({ ...profile, services: value })} />
-            </div>
-            <div className="sm:col-span-2">
-              <ProfileTextarea label="Never promise" value={profile.neverPromise} onChange={(value) => setProfile({ ...profile, neverPromise: value })} />
-            </div>
-            <div className="sm:col-span-2">
-              <ProfileTextarea label="Learned owner voice" value={profile.voiceProfile} onChange={(value) => setProfile({ ...profile, voiceProfile: value })} />
-            </div>
-          </div>
-          <ModalFooter>
-            <button type="button" onClick={() => setActiveModal(null)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700">Cancel</button>
-            <button type="button" onClick={() => saveProfile(true)} disabled={isSavingProfile} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              {isSavingProfile ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
-              Save context
-            </button>
-          </ModalFooter>
-        </Modal>
-      ) : null}
-
-      {activeModal === "voice" ? (
-        <Modal title="Learn owner voice" onClose={() => setActiveModal(null)} wide>
-          <p className="text-sm leading-6 text-slate-600">
-            Load recent sent replies, select examples, and Gibraltar will save a compact style guide. Full sent emails are not stored.
-          </p>
-          {profile.voiceProfile ? (
-            <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50 p-4 text-sm leading-6 text-teal-900">
-              Learned from {profile.voiceSampleCount ?? 0} examples{profile.voiceLearnedAt ? ` on ${new Date(profile.voiceLearnedAt).toLocaleDateString()}` : ""}.
-            </div>
-          ) : null}
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button type="button" onClick={loadVoiceSamples} disabled={!payload.connected || isLoadingSamples} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">
-              {isLoadingSamples ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <History className="h-4 w-4" aria-hidden="true" />}
-              Load sent replies
-            </button>
-            <button type="button" onClick={learnVoice} disabled={selectedVoiceSampleIds.length < 3 || isLearningVoice} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              {isLearningVoice ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
-              Learn voice
-            </button>
-          </div>
-          <div className="brand-scrollbar mt-5 max-h-[50vh] space-y-3 overflow-y-auto pr-1">
-            {voiceSamples.length ? voiceSamples.map((sample) => (
-              <label key={sample.id} className="block rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-start gap-3">
-                  <input type="checkbox" checked={selectedVoiceSampleIds.includes(sample.id)} onChange={() => toggleVoiceSample(sample.id)} className="mt-1 h-4 w-4 accent-teal-600" />
-                  <div className="min-w-0">
-                    <p className="truncate font-black">{sample.subject || "(No subject)"}</p>
-                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{sample.body}</p>
-                  </div>
-                </div>
-              </label>
-            )) : (
-              <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">Connect Gmail, then load sent replies to begin.</p>
-            )}
-          </div>
-        </Modal>
-      ) : null}
-
       {selectedMessage ? (
         <Modal title="Message details" onClose={() => setSelectedMessage(null)} wide>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -1306,11 +1013,6 @@ export default function AppPage() {
           </div>
         </Modal>
       ) : null}
-      {selectedDraftEvent ? (
-        <Modal title="Draft details" onClose={() => setSelectedDraftEvent(null)} wide>
-          <DraftEventDetail event={selectedDraftEvent} />
-        </Modal>
-      ) : null}
       {confirmSendOpen ? (
         <Modal title="Confirm send" onClose={() => setConfirmSendOpen(false)} wide>
           <SendConfirmPanel
@@ -1331,21 +1033,16 @@ export default function AppPage() {
   );
 }
 
-function ActionButton({ icon: Icon, label, onClick, active }: { icon: typeof Settings; label: string; onClick: () => void; active: boolean }) {
-  return (
-    <button type="button" onClick={onClick} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black transition ${active ? "border-teal-200 bg-teal-50 text-teal-800" : "border-slate-200 bg-white text-slate-700 hover:border-teal-200 hover:text-teal-700"}`}>
-      <Icon className="h-4 w-4" aria-hidden="true" />
-      {label}
-    </button>
-  );
-}
-
 function SetupChecklist({
   items,
   onConnect,
+  completed,
+  onDismiss,
 }: {
   items: Array<{ label: string; done: boolean; action: string; href: string | null }>;
   onConnect: () => void;
+  completed: boolean;
+  onDismiss: () => void;
 }) {
   const complete = items.filter((item) => item.done).length;
 
@@ -1356,8 +1053,19 @@ function SetupChecklist({
           <p className="text-sm font-black uppercase text-teal-600">Setup checklist</p>
           <h2 className="text-2xl font-black">{complete}/{items.length} complete</h2>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 sm:w-48">
-          <div className="h-full rounded-full bg-teal-500" style={{ width: `${(complete / items.length) * 100}%` }} />
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 sm:w-48">
+            <div className="h-full rounded-full bg-teal-500" style={{ width: `${(complete / items.length) * 100}%` }} />
+          </div>
+          {completed ? (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-600 transition hover:border-teal-200 hover:text-teal-700"
+            >
+              Hide checklist
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-5">
@@ -1580,7 +1288,7 @@ function MessageRow({
   onRemoveJunk: () => void;
 }) {
   const needsReply = message.triage?.needsReply ?? true;
-  const brief = message.summary || message.snippet || "No preview available.";
+  const brief = message.summary || "Summary unavailable.";
 
   return (
     <article className={`border-l-4 transition hover:bg-slate-50 ${needsReply ? "border-l-orange-400 bg-orange-50/60" : "border-l-transparent bg-white"}`}>
@@ -1784,93 +1492,6 @@ function ReminderButton({ label, days, busy, onClick }: { label: string; days: n
   );
 }
 
-function ReminderItem({ reminder, busy, onComplete }: { reminder: FollowUpReminder; busy: boolean; onComplete: () => void }) {
-  const dueDate = new Date(reminder.due_at);
-  const overdue = dueDate.getTime() < Date.now();
-
-  return (
-    <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-black">{reminder.source_subject || "(No subject)"}</p>
-          <p className={`mt-2 text-sm font-bold ${overdue ? "text-red-700" : "text-slate-500"}`}>
-            Due {dueDate.toLocaleString()}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onComplete}
-          disabled={busy}
-          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700 disabled:cursor-not-allowed disabled:text-slate-300"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
-          Done
-        </button>
-      </div>
-    </article>
-  );
-}
-
-function HistoryItem({ event, onOpen }: { event: DraftEvent; onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="block w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-teal-200 hover:bg-white hover:shadow-sm"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="truncate font-black">{event.source_subject || "(No subject)"}</p>
-        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-black uppercase ${event.sent_at ? "bg-blue-100 text-blue-800" : event.status === "created" ? "bg-teal-100 text-teal-800" : "bg-red-100 text-red-800"}`}>
-          {event.sent_at ? "sent" : event.status}
-        </span>
-      </div>
-      <p className="mt-2 text-sm text-slate-500">
-        {new Date(event.created_at).toLocaleString()}
-        {event.variant_label ? ` · ${event.variant_label}` : ""}
-      </p>
-      {event.error_message ? <p className="mt-2 text-sm font-semibold text-red-700">{event.error_message}</p> : null}
-    </button>
-  );
-}
-
-function DraftEventDetail({ event }: { event: DraftEvent }) {
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2">
-        <SourceBadge label={event.sent_at ? "Sent" : event.status} active={event.status === "created"} />
-        <SourceBadge label={event.variant_label || "Original"} active />
-      </div>
-      <h2 className="mt-5 text-2xl font-black">{event.source_subject || "(No subject)"}</h2>
-      <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-        <DraftDetailItem label="Created" value={new Date(event.created_at).toLocaleString()} />
-        <DraftDetailItem label="Sent" value={event.sent_at ? new Date(event.sent_at).toLocaleString() : "Not sent from Gibraltar"} />
-        <DraftDetailItem label="Draft ID" value={event.draft_id || "Not available"} />
-        <DraftDetailItem label="Sent message ID" value={event.sent_message_id || "Not available"} />
-      </dl>
-      {event.variant_instruction ? (
-        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-black uppercase text-slate-500">Variant instruction</p>
-          <p className="mt-2 leading-7 text-slate-700">{event.variant_instruction}</p>
-        </div>
-      ) : null}
-      {event.error_message ? (
-        <div className="mt-5 rounded-xl border border-red-100 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-700">
-          {event.error_message}
-        </div>
-      ) : null}
-      <div className="brand-scrollbar mt-5 max-h-[45vh] overflow-y-auto whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-5 leading-7 text-slate-700">
-        {event.reply_snapshot || "Older draft events do not have a saved reply snapshot. New drafts will show their reviewed reply here."}
-      </div>
-      {event.draft_id && !event.sent_at ? (
-        <a href="https://mail.google.com/mail/u/0/#drafts" target="_blank" rel="noreferrer" className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 text-sm font-black text-teal-800 transition hover:-translate-y-0.5">
-          Open Gmail drafts
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </a>
-      ) : null}
-    </div>
-  );
-}
-
 function SendConfirmPanel({
   recipient,
   subject,
@@ -1936,28 +1557,6 @@ function Modal({ title, children, onClose, wide = false }: { title: string; chil
         <div className="brand-scrollbar max-h-[calc(90vh-4.5rem)] overflow-y-auto p-5">{children}</div>
       </section>
     </div>
-  );
-}
-
-function ModalFooter({ children }: { children: React.ReactNode }) {
-  return <div className="mt-6 flex justify-end gap-2 border-t border-slate-200 pt-4">{children}</div>;
-}
-
-function ProfileInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="block">
-      <span className="text-sm font-bold text-slate-700">{label}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100" />
-    </label>
-  );
-}
-
-function ProfileTextarea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="block">
-      <span className="text-sm font-bold text-slate-700">{label}</span>
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={4} className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-950 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100" />
-    </label>
   );
 }
 
