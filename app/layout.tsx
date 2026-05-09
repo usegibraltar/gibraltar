@@ -28,12 +28,12 @@ export default function RootLayout({
           {`
             try {
               var storedTheme = window.localStorage.getItem("gibraltar_theme");
-              var theme = storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
+              var theme = storedTheme === "light" || storedTheme === "dark" ? storedTheme : "light";
               document.documentElement.classList.toggle("dark", theme === "dark");
               document.documentElement.dataset.theme = theme;
             } catch (error) {
-              document.documentElement.classList.add("dark");
-              document.documentElement.dataset.theme = "dark";
+              document.documentElement.classList.remove("dark");
+              document.documentElement.dataset.theme = "light";
             }
           `}
         </Script>

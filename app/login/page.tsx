@@ -65,11 +65,11 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="gibraltar-stage min-h-screen px-4 py-8 text-white">
+    <main className="gibraltar-stage min-h-screen px-4 py-8 text-[#11170f]">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg flex-col justify-center">
         <Link
           href="/"
-          className="mb-8 inline-flex items-center gap-2 text-sm font-black text-slate-400 transition hover:text-white"
+          className="mb-8 inline-flex items-center gap-2 text-sm font-black text-slate-600 transition hover:text-slate-950"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to Gibraltar
@@ -88,16 +88,16 @@ export default function LoginPage() {
           </div>
 
           <h1 className="gibraltar-display mt-10 text-5xl leading-none">
-            Enter the command center.
+            Sign in to Gibraltar.
           </h1>
-          <p className="mt-5 leading-7 text-slate-300">
+          <p className="mt-5 leading-7 text-slate-600">
             Use the email you joined with. Only approved early-access users can
             receive a login link.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8">
             <label className="block">
-              <span className="text-sm font-bold text-slate-300">
+              <span className="text-sm font-bold text-slate-700">
                 Email address
               </span>
               <input
@@ -106,7 +106,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@yourbusiness.com"
-                className="mt-3 min-h-14 w-full rounded-xl border border-white/10 bg-black/35 px-4 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-white/40 focus:ring-4 focus:ring-white/10"
+                className="mt-3 min-h-14 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-green-900/30 focus:ring-4 focus:ring-green-900/10"
               />
             </label>
 
@@ -125,7 +125,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-6 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-base font-black text-black shadow-lg shadow-black/30 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-500 disabled:hover:translate-y-0"
+              className="mt-6 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#173c27] px-5 text-base font-black text-[#f7fbf1] shadow-lg shadow-slate-300/60 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0"
             >
               {isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
@@ -137,29 +137,29 @@ export default function LoginPage() {
           </form>
 
           <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
+            <div className="h-px flex-1 bg-slate-200" />
             <span className="text-xs font-black uppercase text-slate-500">
               or
             </span>
-            <div className="h-px flex-1 bg-white/10" />
+            <div className="h-px flex-1 bg-slate-200" />
           </div>
 
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-5 text-base font-black text-slate-100 shadow-sm transition hover:border-white/35 hover:text-white disabled:cursor-not-allowed disabled:text-slate-500"
+            className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 text-base font-black text-slate-700 shadow-sm transition hover:border-green-900/30 hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-300"
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-sm font-black text-white">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-sm font-black text-[#173c27]">
               G
             </span>
             Continue with Google
           </button>
-          <p className="mt-6 text-center text-sm leading-6 text-slate-400">
+          <p className="mt-6 text-center text-sm leading-6 text-slate-500">
             By signing in, you agree to Gibraltar&apos;s{" "}
-            <Link href="/terms" className="font-black text-white">Terms</Link>
+            <Link href="/terms" className="font-black text-[#173c27]">Terms</Link>
             {" "}and{" "}
-            <Link href="/privacy" className="font-black text-white">Privacy Policy</Link>.
+            <Link href="/privacy" className="font-black text-[#173c27]">Privacy Policy</Link>.
           </p>
         </section>
       </div>

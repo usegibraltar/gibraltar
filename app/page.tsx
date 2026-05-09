@@ -248,7 +248,7 @@ export default function Home() {
   return (
     <main
       id="top"
-      className="gibraltar-stage relative min-h-screen scroll-mt-32 overflow-x-hidden text-white"
+      className="gibraltar-stage relative min-h-screen scroll-mt-32 overflow-x-hidden text-[#11170f]"
     >
       <Header onTry={focusTool} />
       <BusinessFlair />
@@ -257,23 +257,23 @@ export default function Home() {
         <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.95fr_1fr]">
           <div>
             <div className="gibraltar-kicker mb-6">
-              Launch-ready replies / built for busy businesses
+              Customer ops / reply intelligence
             </div>
             <h1 className="gibraltar-display max-w-4xl text-5xl leading-[0.98] sm:text-7xl lg:text-8xl">
-              Customer replies with presence.
+              The reply platform for modern local business.
             </h1>
-            <p className="mt-7 max-w-xl text-xl leading-9 text-slate-300">
-              Gibraltar turns inbox noise into clear, composed next steps so every warm lead gets handled like it matters.
+            <p className="mt-7 max-w-xl text-xl leading-9 text-slate-600">
+              Gibraltar turns customer messages into organized decisions, clear drafts, and follow-through your business can trust.
             </p>
             <button
               type="button"
               onClick={focusTool}
-              className="mt-8 inline-flex items-center justify-center gap-3 rounded-xl bg-white px-8 py-4 text-base font-black text-black shadow-lg shadow-black/30 transition hover:-translate-y-0.5 hover:shadow-xl"
+              className="mt-8 inline-flex items-center justify-center gap-3 rounded-xl bg-[#173c27] px-8 py-4 text-base font-black text-[#f7fbf1] shadow-lg shadow-slate-300/60 transition hover:-translate-y-0.5 hover:shadow-xl"
             >
               Write my reply
               <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </button>
-            <p className="mt-8 text-base text-slate-400">
+            <p className="mt-8 text-base text-slate-500">
               No login. No setup. Just paste a message.
             </p>
             <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
@@ -714,7 +714,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="relative z-10 bg-gradient-to-br from-[#101a30] to-[#18334a] px-4 py-24 text-white sm:px-6 lg:px-20 xl:px-24">
+      <section className="relative z-10 bg-[#173c27] px-4 py-24 text-[#f7fbf1] sm:px-6 lg:px-20 xl:px-24">
         <div className="mx-auto max-w-4xl text-center">
           <EarlyAccessForm
             email={earlyAccessEmail}
@@ -775,7 +775,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="relative z-10 bg-[#0d1729] px-4 py-12 text-white sm:px-6 lg:px-20 xl:px-24">
+      <footer className="relative z-10 bg-[#11170f] px-4 py-12 text-[#f7fbf1] sm:px-6 lg:px-20 xl:px-24">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <Logo light />
           <p className="text-sm text-slate-300">
@@ -794,51 +794,51 @@ export default function Home() {
 function Header({ onTry }: { onTry: () => void }) {
   return (
     <header className="fixed left-0 right-0 top-4 z-50 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 rounded-xl border border-white/10 bg-black/55 px-4 py-3 shadow-2xl shadow-black/30 backdrop-blur-2xl md:flex-row md:items-center md:justify-between md:gap-8 md:px-6 md:py-4">
+      <div className="gibraltar-panel mx-auto flex max-w-7xl flex-col gap-3 rounded-xl px-4 py-3 md:flex-row md:items-center md:justify-between md:gap-8 md:px-6 md:py-4">
         <div className="flex items-center justify-between gap-3 md:contents">
           <a
             href="#top"
             aria-label="Back to top"
-            className="rounded-lg focus:outline-none focus:ring-4 focus:ring-white/20 md:order-1"
+            className="rounded-lg focus:outline-none focus:ring-4 focus:ring-green-900/10 md:order-1"
           >
-            <Logo light />
+            <Logo />
           </a>
           <button
             type="button"
             onClick={onTry}
-            className="shrink-0 rounded-xl bg-white px-4 py-3 text-sm font-black text-black shadow-sm transition hover:-translate-y-0.5 sm:px-6 md:order-3"
+            className="shrink-0 rounded-xl bg-[#173c27] px-4 py-3 text-sm font-black text-[#f7fbf1] shadow-sm transition hover:-translate-y-0.5 sm:px-6 md:order-3"
           >
             Write my reply
           </button>
         </div>
-        <nav className="grid grid-cols-2 gap-2 text-center text-sm font-bold text-slate-300 sm:grid-cols-4 md:hidden">
-          <a href="#how-it-works" className="rounded-lg bg-white/5 px-3 py-2 transition hover:text-white">
+        <nav className="grid grid-cols-2 gap-2 text-center text-sm font-bold text-slate-600 sm:grid-cols-4 md:hidden">
+          <a href="#how-it-works" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
             How it works
           </a>
-          <a href="#examples" className="rounded-lg bg-white/5 px-3 py-2 transition hover:text-white">
+          <a href="#examples" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
             Examples
           </a>
-          <a href="#inbox-preview" className="rounded-lg bg-white/5 px-3 py-2 transition hover:text-white">
+          <a href="#inbox-preview" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
             Inbox
           </a>
-          <a href="/login" className="rounded-lg bg-white/5 px-3 py-2 transition hover:text-white">
+          <a href="/login" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
             Login
           </a>
         </nav>
-        <nav className="hidden items-center gap-8 text-base text-slate-300 md:order-2 md:flex">
-          <a href="#how-it-works" className="transition hover:text-white">
+        <nav className="hidden items-center gap-8 text-base text-slate-600 md:order-2 md:flex">
+          <a href="#how-it-works" className="transition hover:text-slate-950">
             How it works
           </a>
-          <a href="#examples" className="transition hover:text-white">
+          <a href="#examples" className="transition hover:text-slate-950">
             Examples
           </a>
-          <a href="#inbox-preview" className="transition hover:text-white">
+          <a href="#inbox-preview" className="transition hover:text-slate-950">
             Inbox preview
           </a>
-          <a href="#features" className="transition hover:text-white">
+          <a href="#features" className="transition hover:text-slate-950">
             For local businesses
           </a>
-          <a href="/login" className="transition hover:text-white">
+          <a href="/login" className="transition hover:text-slate-950">
             Login
           </a>
         </nav>
@@ -888,14 +888,14 @@ function HeroPreview() {
     <div className="gibraltar-panel overflow-hidden rounded-2xl">
       <div className="p-6">
         <p className="text-sm font-bold uppercase text-slate-500">Customer asked</p>
-        <div className="mt-3 rounded-xl border border-white/10 bg-black/35 p-5 text-lg leading-8 text-slate-200">
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5 text-lg leading-8 text-slate-700">
           &quot;Hi, how much would it cost to book a birthday dinner for 8 people this
           Friday?&quot;
         </div>
       </div>
-      <div className="border-t border-white/10 bg-white/[0.04] p-6">
+      <div className="border-t border-slate-200 bg-white p-6">
         <p className="text-sm font-bold uppercase text-teal-600">Send this</p>
-        <div className="mt-3 rounded-xl border border-white/10 bg-black/40 p-5 text-lg leading-8 text-slate-100">
+        <div className="mt-3 rounded-xl border border-teal-200 bg-cyan-50 p-5 text-lg leading-8 text-slate-800">
           &quot;Absolutely, we would love to host you. For 8 guests this Friday, I can
           check availability and send the best seating options. What time are you
           hoping to come in?&quot;
