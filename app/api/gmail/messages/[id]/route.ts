@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBearerToken, jsonError } from "../../../../lib/api";
-import { getFreshAccessToken, getMessageDetail, getThreadDetail } from "../../../../lib/gmail";
+import { getFreshAccessToken, getMessageDetail, getThreadDetail, selectLatestCustomerMessage } from "../../../../lib/gmail";
 import { summarizeAndStoreMessages, triageAndStoreMessages } from "../../../../lib/gmail-message-store";
 import { getSupabaseAdmin, GmailConnection, requireApprovedUser } from "../../../../lib/supabase";
 import { defaultTriage } from "../../../../lib/triage";
@@ -36,8 +36,9 @@ export async function GET(request: Request, { params }: Params) {
 
   try {
     const accessToken = await getFreshAccessToken(connection);
-    const message = await getMessageDetail(accessToken, id);
-    const thread = await getThreadDetail(accessToken, message.threadId);
+    const requestedMessage = await getMessageDetail(accessToken, id);
+    const thread = await getThreadDetail(accessToken, requestedMessage.threadId);
+    const message = selectLatestCustomerMessage(thread.messages) ?? requestedMessage;
     const triage = await triageAndStoreMessages({
       user: auth.user,
       gmailEmail: connection.gmail_email,

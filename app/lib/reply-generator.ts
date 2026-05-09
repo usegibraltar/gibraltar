@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { getMessageDetail, getThreadDetail, GmailMessageDetail, GmailThreadDetail } from "./gmail";
+import { getMessageDetail, getThreadDetail, GmailMessageDetail, GmailThreadDetail, selectLatestCustomerMessage } from "./gmail";
 import { choosePlaybook, loadEnabledPlaybooks, ReplyPlaybook } from "./playbooks";
 import { getSupabaseAdmin } from "./supabase";
 
@@ -83,6 +83,7 @@ export async function generateGmailReply({
     loadEnabledPlaybooks(userId),
   ]);
   const thread = await getThreadDetail(accessToken, message.threadId);
+  const selectedMessage = selectLatestCustomerMessage(thread.messages) ?? message;
   const playbook = choosePlaybook({ playbooks, playbookId, category: triageCategory });
 
   const client = new OpenAI({
@@ -117,15 +118,15 @@ export async function generateGmailReply({
           instruction ? `Revision instruction: ${instruction}` : "Revision instruction: None",
           "",
           "Selected customer email:",
-          `From: ${message.from}`,
-          `Subject: ${message.subject}`,
-          `Snippet: ${message.snippet}`,
+          `From: ${selectedMessage.from}`,
+          `Subject: ${selectedMessage.subject}`,
+          `Snippet: ${selectedMessage.snippet}`,
           "",
           "Email body:",
-          message.body,
+          selectedMessage.body,
           "",
           "Conversation thread context:",
-          formatThreadContext(thread, message.id),
+          formatThreadContext(thread, selectedMessage.id),
           "",
           "Write a reply draft the business owner can review in Gmail. Also return concise confidence, advisory risk flags, a recommended owner action, and any missing business context. Do not block sending; flags are advisory.",
         ].join("\n"),
@@ -144,7 +145,7 @@ export async function generateGmailReply({
   const parsed = JSON.parse(aiResponse.output_text) as ReplyGenerationBody;
 
   return {
-    message,
+    message: selectedMessage,
     reply: parsed.reply,
     confidence: normalizeConfidence(parsed.confidence),
     riskFlags: cleanList(parsed.riskFlags, 4),

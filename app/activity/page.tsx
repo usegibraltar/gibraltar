@@ -146,14 +146,17 @@ export default function ActivityPage() {
     <main className="min-h-screen bg-[#f8fbff] text-[#0b132b]">
       <header className="border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/home" className="flex items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-teal-100">
             <Image src="/brand/gibraltar-mark.svg" alt="" width={96} height={96} className="h-10 w-10 rounded-xl shadow-md shadow-blue-500/20" />
             <div>
               <p className="text-lg font-black">Gibraltar</p>
               <p className="text-sm text-slate-500">{userEmail}</p>
             </div>
-          </div>
+          </Link>
           <div className="flex flex-wrap gap-2">
+            <Link href="/home" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
+              Home
+            </Link>
             <Link href="/app" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Replies

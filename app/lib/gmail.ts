@@ -298,14 +298,41 @@ export async function listRecentMessages(
     console.warn(`Skipped ${skippedCount} Gmail message(s) that could not be read.`);
   }
 
-  const messages = messageResults.flatMap((result) =>
+  const listedMessages = messageResults.flatMap((result) =>
     result.status === "fulfilled" ? [result.value] : [],
   );
+  const threadIds = Array.from(new Set(listedMessages.map((message) => message.threadId).filter(Boolean)));
+  const threadResults = await Promise.allSettled(
+    threadIds.map(async (threadId) => [threadId, await getThreadDetail(accessToken, threadId)] as const),
+  );
+  const latestByThreadId = new Map(
+    threadResults.flatMap((result) => {
+      if (result.status !== "fulfilled") {
+        return [];
+      }
+
+      const [threadId, thread] = result.value;
+      const latest = selectLatestCustomerMessage(thread.messages);
+
+      return latest ? [[threadId, latest] as const] : [];
+    }),
+  );
+  const seenMessageIds = new Set<string>();
+  const messages = listedMessages.flatMap((message) => {
+    const latest = latestByThreadId.get(message.threadId) ?? message;
+
+    if (seenMessageIds.has(latest.id)) {
+      return [];
+    }
+
+    seenMessageIds.add(latest.id);
+    return [latest];
+  });
 
   return {
     messages,
     nextPageToken: listPayload.nextPageToken ?? null,
-    resultSizeEstimate: listPayload.resultSizeEstimate ?? messages.length,
+    resultSizeEstimate: listPayload.resultSizeEstimate ?? listedMessages.length,
   };
 }
 
@@ -372,6 +399,26 @@ export async function getThreadDetail(accessToken: string, threadId: string) {
       labelIds: message.labelIds ?? [],
     })),
   };
+}
+
+export function selectLatestCustomerMessage<T extends GmailMessageDetail & { labelIds?: string[] }>(
+  messages: T[],
+) {
+  const sorted = [...messages].sort((a, b) => messageTimestamp(b) - messageTimestamp(a));
+
+  return sorted.find((message) => !message.labelIds?.includes("SENT")) ?? sorted[0] ?? null;
+}
+
+function messageTimestamp(message: Pick<GmailMessageDetail, "internalDate" | "date">) {
+  const internalDate = Number(message.internalDate);
+
+  if (Number.isFinite(internalDate) && internalDate > 0) {
+    return internalDate;
+  }
+
+  const date = Date.parse(message.date);
+
+  return Number.isFinite(date) ? date : 0;
 }
 
 function summarizeMessageDetail(message: GmailMessageResponse): GmailMessageDetail {

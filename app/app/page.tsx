@@ -228,7 +228,6 @@ export default function AppPage() {
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
   const [onboardingEvents, setOnboardingEvents] = useState<string[]>([]);
   const [showTour, setShowTour] = useState(false);
-  const [setupChecklistDismissed, setSetupChecklistDismissed] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -366,7 +365,6 @@ export default function AppPage() {
 
   useEffect(() => {
     setShowTour(window.localStorage.getItem("gibraltar_onboarding_dismissed") !== "true");
-    setSetupChecklistDismissed(window.localStorage.getItem("gibraltar_setup_checklist_dismissed") === "true");
   }, []);
 
   useEffect(() => {
@@ -656,6 +654,23 @@ export default function AppPage() {
 
       setSuccess(body.sent ? "Email sent from Gmail." : "Draft created in Gmail.");
       setLatestReply(body.reply ?? "");
+      setPayload((current) => ({
+        ...current,
+        messages: current.messages.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                triage: message.triage
+                  ? {
+                      ...message.triage,
+                      needsReply: false,
+                      reason: body.sent ? "Handled by sending a Gibraltar reply." : "Handled by creating a Gibraltar draft.",
+                    }
+                  : message.triage,
+              }
+            : message,
+        ),
+      }));
       setReviewMessageId("");
       setReviewThreadId("");
       setReviewMessageSubject("");
@@ -776,20 +791,23 @@ export default function AppPage() {
     { label: "Create or send first email", done: onboardingEvents.includes("first_email_created") || Boolean(latestReply), action: "Review draft", href: null },
   ];
   const setupComplete = setupItems.every((item) => item.done);
-  const showSetupChecklist = !setupComplete || !setupChecklistDismissed;
+  const showSetupChecklist = !setupComplete;
 
   return (
     <main className="min-h-screen bg-[#f8fbff] text-[#0b132b]">
       <header className="border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/home" className="flex items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-teal-100">
             <Image src="/brand/gibraltar-mark.svg" alt="" width={96} height={96} className="h-10 w-10 rounded-xl shadow-md shadow-blue-500/20" />
             <div>
               <p className="text-lg font-black">Gibraltar</p>
               <p className="text-sm text-slate-500">{userEmail}</p>
             </div>
-          </div>
+          </Link>
           <div className="flex flex-wrap gap-2">
+            <Link href="/home" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
+              Home
+            </Link>
             <Link href="/app" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white">
               Replies
             </Link>
@@ -852,15 +870,8 @@ export default function AppPage() {
           <SetupChecklist
             items={setupItems}
             onConnect={connectGmail}
-            completed={setupComplete}
-            onDismiss={() => {
-              window.localStorage.setItem("gibraltar_setup_checklist_dismissed", "true");
-              setSetupChecklistDismissed(true);
-            }}
           />
-        ) : (
-          <SystemReadyStatus />
-        )}
+        ) : null}
         {showTour ? <FirstRunTour onDismiss={dismissTour} /> : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
@@ -1090,8 +1101,12 @@ export default function AppPage() {
               <h2 className="mt-5 text-2xl font-black">{selectedMessage.subject}</h2>
               <p className="mt-2 text-sm text-slate-500">{selectedMessage.date}</p>
               {selectedMessage.triage ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <TriageBadges triage={selectedMessage.triage} />
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-600">
+                  <span>{categoryLabel(selectedMessage.triage.category)}</span>
+                  <span className="text-slate-300">/</span>
+                  <span>{selectedMessage.triage.urgency} urgency</span>
+                  <span className="text-slate-300">/</span>
+                  <span>{selectedMessage.triage.needsReply ? "needs reply" : "handled"}</span>
                 </div>
               ) : null}
             </div>
@@ -1158,13 +1173,9 @@ export default function AppPage() {
 function SetupChecklist({
   items,
   onConnect,
-  completed,
-  onDismiss,
 }: {
   items: Array<{ label: string; done: boolean; action: string; href: string | null }>;
   onConnect: () => void;
-  completed: boolean;
-  onDismiss: () => void;
 }) {
   const complete = items.filter((item) => item.done).length;
 
@@ -1179,15 +1190,6 @@ function SetupChecklist({
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 sm:w-48">
             <div className="h-full rounded-full bg-teal-500" style={{ width: `${(complete / items.length) * 100}%` }} />
           </div>
-          {completed ? (
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-600 transition hover:border-teal-200 hover:text-teal-700"
-            >
-              Hide checklist
-            </button>
-          ) : null}
         </div>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-5">
@@ -1209,23 +1211,6 @@ function SetupChecklist({
           </div>
         ))}
       </div>
-    </section>
-  );
-}
-
-function SystemReadyStatus() {
-  return (
-    <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-teal-100 bg-teal-50 px-5 py-4 text-teal-950 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
-        <CheckCircle2 className="h-5 w-5 text-teal-700" aria-hidden="true" />
-        <div>
-          <p className="text-sm font-black uppercase text-teal-700">System ready</p>
-          <p className="text-sm font-semibold">Gmail, context, voice, first reply, and first draft setup are complete.</p>
-        </div>
-      </div>
-      <Link href="/settings" className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-sm font-black text-teal-800">
-        Tune settings
-      </Link>
     </section>
   );
 }
@@ -1482,14 +1467,6 @@ function MessageRow({
 }
 
 function TriageBadges({ triage, compact = false }: { triage: MessageTriage; compact?: boolean }) {
-  const categoryLabels: Record<TriageCategory, string> = {
-    booking: "Booking",
-    pricing: "Pricing",
-    complaint: "Issue",
-    follow_up: "Follow-up",
-    general: "General",
-    low_priority: "Low priority",
-  };
   const urgencyClasses = {
     high: "bg-red-100 text-red-800",
     medium: "bg-amber-100 text-amber-800",
@@ -1504,7 +1481,7 @@ function TriageBadges({ triage, compact = false }: { triage: MessageTriage; comp
         </span>
       ) : null}
       <span className="shrink-0 rounded-full bg-teal-100 px-2 py-1 text-xs font-black uppercase text-teal-800">
-        {categoryLabels[triage.category]}
+        {categoryLabel(triage.category)}
       </span>
       {!compact ? (
         <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-black uppercase ${urgencyClasses[triage.urgency]}`}>
@@ -1518,6 +1495,19 @@ function TriageBadges({ triage, compact = false }: { triage: MessageTriage; comp
       ) : null}
     </>
   );
+}
+
+function categoryLabel(category: TriageCategory) {
+  const labels: Record<TriageCategory, string> = {
+    booking: "Booking",
+    pricing: "Pricing",
+    complaint: "Issue",
+    follow_up: "Follow-up",
+    general: "General",
+    low_priority: "Low priority",
+  };
+
+  return labels[category];
 }
 function ReviewPanel({
   subject,
@@ -1574,7 +1564,7 @@ function ReviewPanel({
         <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{summary || subject}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <SourceBadge label={recipient || "Unknown sender"} active />
-          {triage ? <TriageBadges triage={triage} compact /> : null}
+          {triage ? <SourceBadge label={categoryLabel(triage.category)} active /> : null}
           <SourceBadge label={`Confidence: ${guidance?.confidence ?? "medium"}`} active={guidance?.confidence !== "low"} />
         </div>
       </div>
@@ -1601,13 +1591,9 @@ function ReviewPanel({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <SourceBadge label="Business context" active={Boolean(sources?.businessContext)} />
-        <SourceBadge label="Owner voice" active={Boolean(sources?.voiceProfile)} />
-        <SourceBadge label="Playbook" active={Boolean(sources?.playbook)} />
-        <SourceBadge label={`${sources?.threadMessages ?? 1} thread messages`} active />
-        <SourceBadge label={`Variant: ${variantLabel}`} active />
-      </div>
+      <p className="text-sm font-semibold text-slate-500">
+        {sources?.businessContext ? "Business context on" : "No business context"} / {sources?.voiceProfile ? "voice learned" : "voice not learned"} / {sources?.playbook ? "playbook applied" : "no playbook"} / {sources?.threadMessages ?? 1} thread messages / {variantLabel}
+      </p>
 
       <textarea value={reply} onChange={(event) => onReplyChange(event.target.value)} rows={15} className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base leading-8 text-slate-800 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100" />
 

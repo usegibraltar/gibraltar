@@ -5,6 +5,8 @@ import {
   createReplyDraft,
   getFreshAccessToken,
   getMessageDetail,
+  getThreadDetail,
+  selectLatestCustomerMessage,
   sendDraft,
 } from "../../../lib/gmail";
 import { generateGmailReply } from "../../../lib/reply-generator";
@@ -65,9 +67,12 @@ export async function POST(request: Request) {
   try {
     const accessToken = await getFreshAccessToken(connection);
     const reviewedReply = typeof body.reply === "string" ? body.reply.trim() : "";
+    const requestedMessage = await getMessageDetail(accessToken, messageId);
+    const thread = await getThreadDetail(accessToken, requestedMessage.threadId);
+    const latestMessage = selectLatestCustomerMessage(thread.messages) ?? requestedMessage;
     const generated = reviewedReply
       ? {
-          message: await getMessageDetail(accessToken, messageId),
+          message: latestMessage,
           reply: reviewedReply,
         }
       : await generateGmailReply({
@@ -115,6 +120,21 @@ export async function POST(request: Request) {
       const { reply_snapshot, sent_at, sent_message_id, variant_label, variant_instruction, ...legacyEvent } = createdEvent;
       await supabase.from("gmail_draft_events").insert(legacyEvent);
       console.warn("Draft event analytics fields are not available yet.", insertError.message, reply_snapshot, variant_label, variant_instruction, sent_at, sent_message_id);
+    }
+
+    const { error: handledError } = await supabase
+      .from("gmail_messages")
+      .update({
+        triage_needs_reply: false,
+        triage_reason: sentMessage
+          ? "Handled by sending a Gibraltar reply."
+          : "Handled by creating a Gibraltar draft.",
+      })
+      .eq("user_id", auth.user.id)
+      .eq("gmail_message_id", message.id);
+
+    if (handledError) {
+      console.warn("Could not mark Gmail message as handled.", handledError.message);
     }
 
     await logAuditEvent({
