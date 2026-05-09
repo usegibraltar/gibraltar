@@ -1,10 +1,10 @@
 <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gibraltar mark">
-  <rect width="96" height="96" rx="24" fill="#11170F"/>
-  <path d="M24 61.7L45.8 20L74 58.8C66.2 62.8 58.4 62.9 50.6 59.1C42.4 55.1 33.8 56 24 61.7Z" fill="#DFEAD5"/>
-  <path d="M45.8 20L74 58.8C66.8 62.5 59.5 62.7 52.2 59.9L55.8 42.5L49.1 35.4L52.6 28.7L45.8 20Z" fill="#7D9273"/>
-  <path d="M27.3 55.4L39.1 51.3L42.3 53.4L49.1 43.2L55.8 45.9L60.3 39.9" stroke="#F7FBF1" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#mountainClip)"/>
-  <path d="M24 61.7C32.9 56.4 41.7 55.9 50.6 60.2C58.4 64 66.2 63.7 74 59.4" stroke="#8DAA79" stroke-width="4.6" stroke-linecap="round"/>
-  <path d="M24 72.3C33.2 68.5 42.3 68.5 51.4 72.3C58.4 75.2 65.6 75.2 73 72.5" stroke="#275D38" stroke-width="4" stroke-linecap="round"/>
+  <rect width="96" height="96" rx="24" fill="#173C27"/>
+  <path d="M24 61.7L45.8 20L74 58.8C66.2 62.8 58.4 62.9 50.6 59.1C42.4 55.1 33.8 56 24 61.7Z" fill="#C8A36F"/>
+  <path d="M45.8 20L74 58.8C66.8 62.5 59.5 62.7 52.2 59.9L55.8 42.5L49.1 35.4L52.6 28.7L45.8 20Z" fill="#745E3F"/>
+  <path d="M27.3 55.4L39.1 51.3L42.3 53.4L49.1 43.2L55.8 45.9L60.3 39.9" stroke="#F0D6AD" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#mountainClip)"/>
+  <path d="M24 61.7C32.9 56.4 41.7 55.9 50.6 60.2C58.4 64 66.2 63.7 74 59.4" stroke="#A9BD84" stroke-width="4.6" stroke-linecap="round"/>
+  <path d="M24 72.3C33.2 68.5 42.3 68.5 51.4 72.3C58.4 75.2 65.6 75.2 73 72.5" stroke="#D2B37B" stroke-width="4" stroke-linecap="round"/>
   <defs>
     <clipPath id="mountainClip">
       <path d="M24 61.7L45.8 20L74 58.8C66.2 62.8 58.4 62.9 50.6 59.1C42.4 55.1 33.8 56 24 61.7Z"/>

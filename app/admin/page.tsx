@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   CheckCircle2,
   CircleAlert,
   Loader2,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
+import { AppHeader } from "../components/app-header";
 import { getSupabaseBrowser } from "../lib/supabase-browser";
 
 type Signup = {
@@ -33,6 +32,7 @@ type SystemCheck = {
 export default function AdminPage() {
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [accessToken, setAccessToken] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [signups, setSignups] = useState<Signup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
@@ -112,6 +112,7 @@ export default function AdminPage() {
       }
 
       setAccessToken(session.access_token);
+      setUserEmail(session.user.email ?? "");
       await loadSignups(session.access_token);
       await loadSystemChecks(session.access_token);
     }
@@ -159,18 +160,17 @@ export default function AdminPage() {
     }
   }
 
-  return (
-    <main className="min-h-screen bg-[#f8fbff] px-4 py-8 text-[#0b132b] sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <Link
-          href="/app"
-          className="inline-flex items-center gap-2 text-sm font-black text-slate-600 transition hover:text-slate-950"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to app
-        </Link>
+  async function signOut() {
+    await supabase.auth.signOut();
+    window.location.replace("/login");
+  }
 
-        <header className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
+  return (
+    <main className="min-h-screen bg-[#f8fbff] text-[#0b132b]">
+      <AppHeader active="admin" userEmail={userEmail} onSignOut={signOut} />
+
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-100 text-teal-700">

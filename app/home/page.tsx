@@ -11,13 +11,13 @@ import {
   CheckCircle2,
   LayoutDashboard,
   Loader2,
-  LogOut,
   Mail,
   Settings,
   Sparkles,
   Zap,
 } from "lucide-react";
 import { DraftAnalytics } from "../components/analytics-panel";
+import { AppHeader } from "../components/app-header";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { getSupabaseBrowser } from "../lib/supabase-browser";
 
@@ -149,29 +149,7 @@ export default function HomeBasePage() {
 
   return (
     <main className="gibraltar-stage min-h-screen text-[#11170f]">
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#f8fbf1]/90 px-4 py-4 backdrop-blur-2xl sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/home" className="flex items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-teal-300/30">
-            <Image src="/brand/gibraltar-mark.svg" alt="" width={96} height={96} className="h-10 w-10 rounded-xl shadow-md shadow-blue-500/20" />
-            <div>
-              <p className="text-lg font-black">Gibraltar</p>
-              <p className="text-sm text-slate-500">{userEmail}</p>
-            </div>
-          </Link>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/home" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#173c27] px-4 text-sm font-black text-[#f7fbf1]">Home</Link>
-            <DarkNavLink href="/app" label="Replies" />
-            <DarkNavLink href="/analytics" label="Analytics" />
-            <DarkNavLink href="/activity" label="Activity" />
-            <DarkNavLink href="/memory" label="Memory" />
-            <DarkNavLink href="/settings" label="Settings" />
-            <button type="button" onClick={signOut} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-red-200 hover:text-red-700">
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader active="home" userEmail={userEmail} onSignOut={signOut} />
 
       <section className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 lg:px-8">
         <section className="gibraltar-panel relative min-h-[34rem] overflow-hidden rounded-3xl p-6 md:p-10">
@@ -206,7 +184,7 @@ export default function HomeBasePage() {
               </div>
             </div>
             <div className="relative">
-              <TopographicCore />
+              <HomeLogoShowcase />
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <PulseCard label="System readiness" value={`${readinessScore}/4`} detail="Core setup" />
                 <PulseCard label="Handled" value={String(analytics?.summary.handled ?? 0)} detail="Last 30 days" />
@@ -275,14 +253,6 @@ export default function HomeBasePage() {
   );
 }
 
-function DarkNavLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link href={href} className="gibraltar-quiet-link inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black transition hover:border-green-900/30">
-      {label}
-    </Link>
-  );
-}
-
 function PulseCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 backdrop-blur">
@@ -334,20 +304,19 @@ function SignalLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TopographicCore() {
+function HomeLogoShowcase() {
   return (
     <div className="relative mx-auto aspect-square max-w-sm">
-      <div className="absolute inset-4 rounded-3xl border border-slate-200 bg-[#eef6e8]/70 gibraltar-ledger" aria-hidden="true" />
-      <svg className="gibraltar-object relative z-10 h-full w-full" viewBox="0 0 360 360" role="img" aria-label="Gibraltar intelligence map">
-        <path d="M103 246L171 64L270 232C240 246 213 246 189 232C164 217 135 222 103 246Z" fill="#dfead5" stroke="currentColor" strokeWidth="2.5" />
-        <path className="gibraltar-object-line" d="M128 223C146 207 167 204 192 214C211 222 230 220 249 207" />
-        <path className="gibraltar-object-line" d="M136 199C154 185 174 183 195 193C213 202 231 200 245 188" />
-        <path className="gibraltar-object-line" d="M145 174C161 163 179 162 198 172C214 181 229 178 240 168" />
-        <path className="gibraltar-object-line" d="M155 148C169 139 184 140 199 149C212 157 224 155 235 146" />
-        <path className="gibraltar-object-line" d="M164 122C176 116 188 118 201 126C212 133 223 133 232 126" />
-        <path className="gibraltar-object-line" d="M174 96C184 92 194 94 204 101C213 107 222 108 229 103" />
-        <path d="M102 263C135 249 166 250 196 264C222 276 248 275 274 263" fill="none" stroke="#275d38" strokeWidth="7" strokeLinecap="round" />
-      </svg>
+      <div className="absolute inset-4 rounded-[2rem] border border-slate-200 bg-[#eef6e8]/80 gibraltar-ledger" aria-hidden="true" />
+      <div className="absolute inset-x-10 top-8 h-1 rounded-full bg-[#d2b37b]/70" aria-hidden="true" />
+      <Image
+        src="/brand/gibraltar-app-icon.svg"
+        alt="Gibraltar"
+        width={512}
+        height={512}
+        priority
+        className="relative z-10 h-full w-full rounded-[2.5rem] p-8 drop-shadow-2xl"
+      />
       <div className="absolute right-2 top-24 z-20 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-xl shadow-slate-300/40">
         <p className="text-xs font-black uppercase text-slate-500">Action</p>
         <p className="mt-1 text-sm font-black text-slate-900">Reply now</p>

@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { BookOpen, CheckCircle2, History, Loader2, LogOut, Mail, Save, Settings, Sparkles, Trash2, Unplug } from "lucide-react";
+import { AppHeader } from "../components/app-header";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { getSupabaseBrowser } from "../lib/supabase-browser";
 
@@ -430,30 +429,7 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-screen bg-[#f8fbff] text-[#0b132b]">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/home" className="flex items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-teal-100">
-            <Image src="/brand/gibraltar-mark.svg" alt="" width={96} height={96} className="h-10 w-10 rounded-xl shadow-md shadow-blue-500/20" />
-            <div>
-              <p className="text-lg font-black">Gibraltar</p>
-              <p className="text-sm text-slate-500">{userEmail}</p>
-            </div>
-          </Link>
-          <div className="flex flex-wrap gap-2">
-            <NavLink href="/home" label="Home" />
-            <NavLink href="/app" label="Replies" />
-            <NavLink href="/analytics" label="Analytics" />
-            <NavLink href="/activity" label="Activity" />
-            <NavLink href="/memory" label="Memory" />
-            <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white">Settings</Link>
-            <NavLink href="/admin" label="Admin" />
-            <button type="button" onClick={signOut} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-red-200 hover:text-red-700">
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader active="settings" userEmail={userEmail} onSignOut={signOut} />
 
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60">
@@ -728,14 +704,6 @@ export default function SettingsPage() {
         </div>
       ) : null}
     </main>
-  );
-}
-
-function NavLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link href={href} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
-      {label}
-    </Link>
   );
 }
 
