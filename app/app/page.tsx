@@ -157,27 +157,7 @@ type SearchChip = {
   query: string;
 };
 
-type InboxFilter = "all" | "needs_reply" | TriageCategory;
 type InboxLane = "needs_reply" | "urgent" | "booking" | "complaint" | "low_priority" | "junk";
-
-type InboxFilterOption = {
-  label: string;
-  value: InboxFilter;
-};
-
-const primaryInboxFilters: InboxFilterOption[] = [
-  { label: "All", value: "all" },
-  { label: "Needs reply", value: "needs_reply" },
-  { label: "Booking", value: "booking" },
-  { label: "Pricing", value: "pricing" },
-];
-
-const moreInboxFilters: InboxFilterOption[] = [
-  { label: "Issues", value: "complaint" },
-  { label: "Follow-up", value: "follow_up" },
-  { label: "General", value: "general" },
-  { label: "Low priority", value: "low_priority" },
-];
 
 const inboxLanes: Array<{ label: string; value: InboxLane }> = [
   { label: "Needs reply", value: "needs_reply" },
@@ -196,9 +176,6 @@ const searchChips: SearchChip[] = [
   { label: "Has attachment", query: "has:attachment" },
   { label: "Needs reply", query: "-from:me newer_than:30d" },
 ];
-
-const primarySearchChips = searchChips.slice(0, 3);
-const moreSearchChips = searchChips.slice(3);
 
 const emptyProfile: BusinessProfile = {
   businessName: "",
@@ -243,10 +220,9 @@ export default function AppPage() {
   const [reviewGuidance, setReviewGuidance] = useState<ReplyGuidance | null>(null);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState("");
   const [activeLane, setActiveLane] = useState<InboxLane>("needs_reply");
-  const [activeFilter, setActiveFilter] = useState<InboxFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [senderFilter, setSenderFilter] = useState("");
-  const [openFilterMenu, setOpenFilterMenu] = useState<"inbox" | "search" | null>(null);
+  const [searchShortcutOpen, setSearchShortcutOpen] = useState(false);
   const [latestReply, setLatestReply] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<SelectedMessage | null>(null);
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
@@ -478,15 +454,7 @@ export default function AppPage() {
       return false;
     }
 
-    if (activeFilter === "all") {
-      return true;
-    }
-
-    if (activeFilter === "needs_reply") {
-      return message.triage?.needsReply ?? true;
-    }
-
-    return message.triage?.category === activeFilter;
+    return true;
   });
 
   const laneCounts = inboxLanes.reduce<Record<InboxLane, number>>(
@@ -774,7 +742,7 @@ export default function AppPage() {
   function applySearchChip(query: string) {
     setSearchQuery(query);
     setSenderFilter("");
-    setOpenFilterMenu(null);
+    setSearchShortcutOpen(false);
     void loadMessages(accessToken, query);
   }
 
@@ -962,6 +930,21 @@ export default function AppPage() {
                     Clear
                   </button>
                 ) : null}
+                <FilterMenu
+                  label="Gmail shortcuts"
+                  open={searchShortcutOpen}
+                  onToggle={() => setSearchShortcutOpen((current) => !current)}
+                >
+                  {searchChips.map((chip) => (
+                    <FilterMenuItem
+                      key={chip.label}
+                      label={chip.label}
+                      active={searchQuery === chip.query}
+                      disabled={isLoading || !payload.connected}
+                      onClick={() => applySearchChip(chip.query)}
+                    />
+                  ))}
+                </FilterMenu>
               </div>
             </form>
             <div className="border-b border-slate-100 px-5 py-3">
@@ -970,10 +953,7 @@ export default function AppPage() {
                   <button
                     key={lane.value}
                     type="button"
-                    onClick={() => {
-                      setActiveLane(lane.value);
-                      setActiveFilter("all");
-                    }}
+                    onClick={() => setActiveLane(lane.value)}
                     className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition ${
                       activeLane === lane.value
                         ? "bg-[#0b132b] text-white"
@@ -987,72 +967,6 @@ export default function AppPage() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-100 px-5 py-3">
-              <div className="flex flex-wrap gap-2">
-                {primaryInboxFilters.map((filter) => (
-                  <FilterButton
-                    key={filter.value}
-                    label={filter.label}
-                    active={activeFilter === filter.value}
-                    onClick={() => {
-                      setActiveFilter(filter.value);
-                      setOpenFilterMenu(null);
-                    }}
-                  />
-                ))}
-              </div>
-              <FilterMenu
-                label="More inbox filters"
-                open={openFilterMenu === "inbox"}
-                onToggle={() => setOpenFilterMenu((current) => (current === "inbox" ? null : "inbox"))}
-              >
-                {moreInboxFilters.map((filter) => (
-                  <FilterMenuItem
-                    key={filter.value}
-                    label={filter.label}
-                    active={activeFilter === filter.value}
-                    onClick={() => {
-                      setActiveFilter(filter.value);
-                      setOpenFilterMenu(null);
-                    }}
-                  />
-                ))}
-              </FilterMenu>
-            </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-100 px-5 py-3">
-              <div className="flex flex-wrap gap-2">
-                {primarySearchChips.map((chip) => (
-                  <button
-                    key={chip.label}
-                    type="button"
-                    onClick={() => applySearchChip(chip.query)}
-                    disabled={isLoading || !payload.connected}
-                    className={`min-h-9 shrink-0 rounded-xl border px-3 text-sm font-black transition disabled:cursor-not-allowed disabled:text-slate-300 ${
-                      searchQuery === chip.query
-                        ? "border-teal-200 bg-teal-50 text-teal-800"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700"
-                    }`}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-              <FilterMenu
-                label="More Gmail filters"
-                open={openFilterMenu === "search"}
-                onToggle={() => setOpenFilterMenu((current) => (current === "search" ? null : "search"))}
-              >
-                {moreSearchChips.map((chip) => (
-                  <FilterMenuItem
-                    key={chip.label}
-                    label={chip.label}
-                    active={searchQuery === chip.query}
-                    disabled={isLoading || !payload.connected}
-                    onClick={() => applySearchChip(chip.query)}
-                  />
-                ))}
-              </FilterMenu>
             </div>
             <div className="brand-scrollbar min-h-0 flex-1 overflow-y-auto">
               {isLoading ? (
@@ -1075,7 +989,7 @@ export default function AppPage() {
                         onRemoveJunk={() => removeJunk(message)}
                         onRestoreJunk={() => restoreJunk(message)}
                       />
-                    )) : <EmptyState title="No messages in this view" body="Try another filter, search Gmail, or load more results." />}
+                    )) : <EmptyState title="No messages in this lane" body="Try another lane, search Gmail, or load more results." />}
                   </div>
                   {payload.nextPageToken ? (
                     <div className="border-t border-slate-100 p-5">
@@ -1414,22 +1328,6 @@ function StatusPill({ label, value, done }: { label: string; value: string; done
         <p className="truncate font-black">{value}</p>
       </div>
     </div>
-  );
-}
-
-function FilterButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`min-h-9 shrink-0 rounded-xl px-3 text-sm font-black transition ${
-        active
-          ? "bg-[#0b132b] text-white"
-          : "border border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 
