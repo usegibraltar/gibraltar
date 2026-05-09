@@ -1,13 +1,18 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gibraltar app icon">
-  <rect width="512" height="512" rx="132" fill="#173C27"/>
-  <circle cx="386" cy="136" r="124" fill="#D2B37B" fill-opacity="0.13"/>
-  <circle cx="140" cy="388" r="148" fill="#A9BD84" fill-opacity="0.18"/>
-  <path d="M112 333L231 101L393 318C348 341 304 342 260 320C213 297 164 302 112 333Z" fill="#C8A36F"/>
-  <path d="M231 101L393 318C352 339 311 342 270 326L294 229L257 189L278 153L231 101Z" fill="#745E3F"/>
-  <path d="M130 298L199 275L218 287L257 230L294 246L318 215" stroke="#F0D6AD" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#mountainClip)"/>
-  <path d="M112 333C163 303 213 301 263 325C308 346 354 344 402 319" stroke="#A9BD84" stroke-width="26" stroke-linecap="round"/>
-  <path d="M104 404C157 382 210 382 263 404C305 421 348 421 392 405" stroke="#D2B37B" stroke-width="22" stroke-linecap="round"/>
+  <g clip-path="url(#iconClip)">
+    <rect width="512" height="512" rx="132" fill="#173C27"/>
+    <circle cx="386" cy="136" r="124" fill="#D2B37B" fill-opacity="0.13"/>
+    <circle cx="140" cy="388" r="148" fill="#A9BD84" fill-opacity="0.18"/>
+    <path d="M112 333L231 101L393 318C348 341 304 342 260 320C213 297 164 302 112 333Z" fill="#C8A36F"/>
+    <path d="M278 164L393 318C352 339 311 342 270 326L294 229L257 189L278 164Z" fill="#745E3F"/>
+    <path d="M130 298L199 275L218 287L257 230L294 246L318 215" stroke="#F0D6AD" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#mountainClip)"/>
+    <path d="M112 333C163 303 213 301 263 325C308 346 354 344 402 319" stroke="#A9BD84" stroke-width="26" stroke-linecap="round"/>
+    <path d="M104 404C157 382 210 382 263 404C305 421 348 421 392 405" stroke="#D2B37B" stroke-width="22" stroke-linecap="round"/>
+  </g>
   <defs>
+    <clipPath id="iconClip">
+      <rect width="512" height="512" rx="132"/>
+    </clipPath>
     <clipPath id="mountainClip">
       <path d="M112 333L231 101L393 318C348 341 304 342 260 320C213 297 164 302 112 333Z"/>
     </clipPath>
