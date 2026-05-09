@@ -148,8 +148,8 @@ export default function HomeBasePage() {
   const readinessScore = readiness.filter(Boolean).length;
 
   return (
-    <main className="min-h-screen bg-[#08111f] text-white">
-      <header className="border-b border-white/10 bg-[#08111f]/92 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+    <main className="gibraltar-stage min-h-screen text-white">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/55 px-4 py-4 backdrop-blur-2xl sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/home" className="flex items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-teal-300/30">
             <Image src="/brand/gibraltar-mark.svg" alt="" width={96} height={96} className="h-10 w-10 rounded-xl shadow-md shadow-blue-500/20" />
@@ -173,37 +173,46 @@ export default function HomeBasePage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-black/30">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-300/70 to-transparent" />
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+      <section className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 lg:px-8">
+        <section className="gibraltar-panel relative min-h-[34rem] overflow-hidden rounded-3xl p-6 md:p-10">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+          <div className="absolute left-0 top-0 h-full w-1/2 bg-[linear-gradient(112deg,rgba(255,255,255,0.08),transparent_65%)]" aria-hidden="true" />
+          <div className="relative grid gap-8 lg:grid-cols-[1fr_0.88fr] lg:items-center">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-sm font-black uppercase text-teal-100">
+              <div className="gibraltar-kicker">
                 <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-                Command central
+                Command central / live customer ops
               </div>
-              <h1 className="mt-5 max-w-3xl text-4xl font-black leading-tight sm:text-5xl">
-                Your customer reply system is online.
+              <h1 className="gibraltar-display mt-6 max-w-4xl text-5xl leading-[0.98] tracking-normal sm:text-6xl lg:text-7xl">
+                Every customer thread, brought under command.
               </h1>
-              <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-300">
-                Start in replies, monitor outcomes, tune memory, and keep every customer thread moving from one home base.
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+                Gibraltar watches the inbox, drafts the next move, protects your voice, and keeps the work moving from one cinematic home base.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/app" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 px-5 text-sm font-black text-white shadow-lg shadow-blue-950/30 transition hover:-translate-y-0.5">
-                  Open reply engine
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href="/app" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-black text-black shadow-lg shadow-black/30 transition hover:-translate-y-0.5">
+                  Enter reply engine
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <Link href="/settings" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-black text-slate-100 transition hover:border-teal-200/50">
-                  Tune system
+                <Link href="/settings" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-black text-slate-100 transition hover:border-white/35">
+                  Tune intelligence
                   <Settings className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
+              <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
+                <SignalLine label="Inbox state" value={gmailStatus.connected ? "Connected" : "Offline"} />
+                <SignalLine label="Voice model" value={profile?.voiceProfile ? "Learned" : "Waiting"} />
+                <SignalLine label="Playbooks" value={`${enabledPlaybooks.length} enabled`} />
+              </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <PulseCard label="System readiness" value={`${readinessScore}/4`} detail="Core setup" />
-              <PulseCard label="Handled" value={String(analytics?.summary.handled ?? 0)} detail="Last 30 days" />
-              <PulseCard label="Pending follow-ups" value={String(pendingReminders.length)} detail="Needs attention" />
-              <PulseCard label="Playbooks" value={String(enabledPlaybooks.length)} detail="Enabled" />
+            <div className="relative">
+              <ObsidianCore />
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <PulseCard label="System readiness" value={`${readinessScore}/4`} detail="Core setup" />
+                <PulseCard label="Handled" value={String(analytics?.summary.handled ?? 0)} detail="Last 30 days" />
+                <PulseCard label="Follow-ups" value={String(pendingReminders.length)} detail="Needs attention" />
+                <PulseCard label="Playbooks" value={String(enabledPlaybooks.length)} detail="Enabled" />
+              </div>
             </div>
           </div>
         </section>
@@ -268,7 +277,7 @@ export default function HomeBasePage() {
 
 function DarkNavLink({ href, label }: { href: string; label: string }) {
   return (
-    <Link href={href} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-black text-slate-200 transition hover:border-teal-200/50 hover:text-white">
+    <Link href={href} className="gibraltar-quiet-link inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.035] px-4 text-sm font-black transition hover:border-white/30 hover:bg-white/[0.07]">
       {label}
     </Link>
   );
@@ -276,7 +285,7 @@ function DarkNavLink({ href, label }: { href: string; label: string }) {
 
 function PulseCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0b1628]/80 p-4">
+    <div className="rounded-2xl border border-white/10 bg-black/35 p-4 backdrop-blur">
       <p className="text-xs font-black uppercase text-slate-400">{label}</p>
       <p className="mt-2 text-3xl font-black">{value}</p>
       <p className="mt-1 text-sm font-semibold text-slate-400">{detail}</p>
@@ -286,9 +295,9 @@ function PulseCard({ label, value, detail }: { label: string; value: string; det
 
 function ActionCard({ icon: Icon, title, body, href, cta }: { icon: typeof Mail; title: string; body: string; href: string; cta: string }) {
   return (
-    <Link href={href} className="group rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:border-teal-200/40">
+    <Link href={href} className="gibraltar-panel group rounded-3xl p-5 transition hover:-translate-y-0.5 hover:border-white/30">
       <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-400 to-blue-500 text-white">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white text-black">
           <Icon className="h-6 w-6" aria-hidden="true" />
         </div>
         <div>
@@ -306,12 +315,45 @@ function ActionCard({ icon: Icon, title, body, href, cta }: { icon: typeof Mail;
 
 function StatusTile({ icon: Icon, title, value, ready }: { icon: typeof Activity; title: string; value: string; ready: boolean }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0b1628] p-4">
+    <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
       <div className="flex items-center gap-2">
         <Icon className={`h-4 w-4 ${ready ? "text-teal-300" : "text-slate-500"}`} aria-hidden="true" />
         <p className="text-sm font-black uppercase text-slate-400">{title}</p>
       </div>
       <p className="mt-2 truncate font-black">{value}</p>
+    </div>
+  );
+}
+
+function SignalLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-l border-white/20 pl-3">
+      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+      <p className="mt-1 truncate text-sm font-black text-slate-100">{value}</p>
+    </div>
+  );
+}
+
+function ObsidianCore() {
+  const tiles = [
+    "left-[28%] top-[4%] h-[22%] w-[28%]",
+    "left-[52%] top-[11%] h-[24%] w-[28%]",
+    "left-[14%] top-[31%] h-[28%] w-[30%]",
+    "left-[43%] top-[39%] h-[29%] w-[31%]",
+    "left-[70%] top-[41%] h-[24%] w-[22%]",
+    "left-[26%] top-[65%] h-[22%] w-[25%]",
+    "left-[55%] top-[69%] h-[20%] w-[28%]",
+  ];
+
+  return (
+    <div className="relative mx-auto aspect-square max-w-sm">
+      <div className="absolute inset-x-8 bottom-4 h-10 bg-black/70 blur-2xl" aria-hidden="true" />
+      <div className="gibraltar-object absolute inset-4 rotate-[-13deg]">
+        {tiles.map((tile) => (
+          <div key={tile} className={`gibraltar-object-tile ${tile}`} />
+        ))}
+      </div>
+      <div className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2 rotate-[-22deg] bg-gradient-to-r from-transparent via-white/50 to-transparent" aria-hidden="true" />
     </div>
   );
 }

@@ -8,8 +8,6 @@ import {
   Clipboard,
   Clock3,
   Dumbbell,
-  Handshake,
-  Leaf,
   Loader2,
   Mail,
   MailCheck,
@@ -20,7 +18,6 @@ import {
   ShoppingBag,
   Sparkles,
   Target,
-  TrendingUp,
   Utensils,
   Wrench,
   Zap,
@@ -251,7 +248,7 @@ export default function Home() {
   return (
     <main
       id="top"
-      className="relative min-h-screen scroll-mt-32 overflow-x-hidden bg-white text-[#0b132b]"
+      className="gibraltar-stage relative min-h-screen scroll-mt-32 overflow-x-hidden text-white"
     >
       <Header onTry={focusTool} />
       <BusinessFlair />
@@ -259,25 +256,24 @@ export default function Home() {
       <section className="relative z-10 px-4 pb-20 pt-44 sm:px-6 md:pt-32 lg:px-20 lg:pt-36 xl:px-24">
         <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.95fr_1fr]">
           <div>
-            <h1 className="max-w-3xl text-4xl font-black leading-[1.12] sm:text-6xl lg:text-7xl">
-              Stop losing customers because you{" "}
-              <span className="bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent">
-                did not reply fast enough.
-              </span>
+            <div className="gibraltar-kicker mb-6">
+              Launch-ready replies / built for busy businesses
+            </div>
+            <h1 className="gibraltar-display max-w-4xl text-5xl leading-[0.98] sm:text-7xl lg:text-8xl">
+              Customer replies with presence.
             </h1>
-            <p className="mt-6 max-w-xl text-xl leading-8 text-slate-600">
-              Paste any customer text, DM, or email and get a ready-to-send reply
-              that helps book the appointment, table, job, or sale.
+            <p className="mt-7 max-w-xl text-xl leading-9 text-slate-300">
+              Gibraltar turns inbox noise into clear, composed next steps so every warm lead gets handled like it matters.
             </p>
             <button
               type="button"
               onClick={focusTool}
-              className="mt-8 inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 px-8 py-4 text-base font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/25"
+              className="mt-8 inline-flex items-center justify-center gap-3 rounded-xl bg-white px-8 py-4 text-base font-black text-black shadow-lg shadow-black/30 transition hover:-translate-y-0.5 hover:shadow-xl"
             >
               Write my reply
               <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </button>
-            <p className="mt-8 text-base text-slate-500">
+            <p className="mt-8 text-base text-slate-400">
               No login. No setup. Just paste a message.
             </p>
             <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
@@ -798,51 +794,51 @@ export default function Home() {
 function Header({ onTry }: { onTry: () => void }) {
   return (
     <header className="fixed left-0 right-0 top-4 z-50 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 rounded-xl border border-slate-200 bg-white/92 px-4 py-3 shadow-lg shadow-slate-200/60 backdrop-blur-xl md:flex-row md:items-center md:justify-between md:gap-8 md:px-6 md:py-4">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 rounded-xl border border-white/10 bg-black/55 px-4 py-3 shadow-2xl shadow-black/30 backdrop-blur-2xl md:flex-row md:items-center md:justify-between md:gap-8 md:px-6 md:py-4">
         <div className="flex items-center justify-between gap-3 md:contents">
           <a
             href="#top"
             aria-label="Back to top"
-            className="rounded-lg focus:outline-none focus:ring-4 focus:ring-teal-100 md:order-1"
+            className="rounded-lg focus:outline-none focus:ring-4 focus:ring-white/20 md:order-1"
           >
-            <Logo />
+            <Logo light />
           </a>
           <button
             type="button"
             onClick={onTry}
-            className="shrink-0 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 sm:px-6 md:order-3"
+            className="shrink-0 rounded-xl bg-white px-4 py-3 text-sm font-black text-black shadow-sm transition hover:-translate-y-0.5 sm:px-6 md:order-3"
           >
             Write my reply
           </button>
         </div>
-        <nav className="grid grid-cols-2 gap-2 text-center text-sm font-bold text-slate-600 sm:grid-cols-4 md:hidden">
-          <a href="#how-it-works" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+        <nav className="grid grid-cols-2 gap-2 text-center text-sm font-bold text-slate-300 sm:grid-cols-4 md:hidden">
+          <a href="#how-it-works" className="rounded-lg bg-white/5 px-3 py-2 transition hover:text-white">
             How it works
           </a>
-          <a href="#examples" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+          <a href="#examples" className="rounded-lg bg-white/5 px-3 py-2 transition hover:text-white">
             Examples
           </a>
-          <a href="#inbox-preview" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+          <a href="#inbox-preview" className="rounded-lg bg-white/5 px-3 py-2 transition hover:text-white">
             Inbox
           </a>
-          <a href="/login" className="rounded-lg bg-slate-100 px-3 py-2 transition hover:text-slate-950">
+          <a href="/login" className="rounded-lg bg-white/5 px-3 py-2 transition hover:text-white">
             Login
           </a>
         </nav>
-        <nav className="hidden items-center gap-8 text-base text-slate-600 md:order-2 md:flex">
-          <a href="#how-it-works" className="transition hover:text-slate-950">
+        <nav className="hidden items-center gap-8 text-base text-slate-300 md:order-2 md:flex">
+          <a href="#how-it-works" className="transition hover:text-white">
             How it works
           </a>
-          <a href="#examples" className="transition hover:text-slate-950">
+          <a href="#examples" className="transition hover:text-white">
             Examples
           </a>
-          <a href="#inbox-preview" className="transition hover:text-slate-950">
+          <a href="#inbox-preview" className="transition hover:text-white">
             Inbox preview
           </a>
-          <a href="#features" className="transition hover:text-slate-950">
+          <a href="#features" className="transition hover:text-white">
             For local businesses
           </a>
-          <a href="/login" className="transition hover:text-slate-950">
+          <a href="/login" className="transition hover:text-white">
             Login
           </a>
         </nav>
@@ -852,51 +848,7 @@ function Header({ onTry }: { onTry: () => void }) {
 }
 
 function BusinessFlair() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 hidden overflow-hidden lg:block"
-    >
-      <FlairIcon icon={BadgeDollarSign} className="right-6 top-56 rotate-[-10deg]" glow="bg-emerald-400/25" tile="bg-emerald-600" />
-      <FlairIcon icon={Leaf} className="left-6 top-[760px] rotate-12" glow="bg-teal-400/25" tile="bg-teal-600" />
-      <FlairIcon icon={Target} className="right-6 top-[1030px] rotate-[-8deg]" glow="bg-orange-400/25" tile="bg-orange-600" />
-      <FlairIcon icon={BadgeDollarSign} className="right-6 top-[1510px] rotate-12" glow="bg-emerald-400/25" tile="bg-emerald-600" />
-      <FlairIcon icon={Handshake} className="left-6 top-[1880px] rotate-6" glow="bg-indigo-400/25" tile="bg-indigo-600" />
-      <FlairIcon icon={TrendingUp} className="left-6 top-[2360px] rotate-[-8deg]" glow="bg-sky-400/25" tile="bg-sky-600" />
-      <FlairIcon icon={Clock3} className="right-6 top-[2740px] rotate-[-10deg]" glow="bg-cyan-400/25" tile="bg-cyan-600" />
-      <FlairIcon icon={Leaf} className="right-6 top-[3340px] rotate-[-12deg]" glow="bg-teal-400/25" tile="bg-teal-600" />
-      <FlairIcon icon={MailCheck} className="left-6 top-[3850px] rotate-6" glow="bg-blue-400/25" tile="bg-blue-600" />
-      <FlairIcon icon={TrendingUp} className="right-6 top-[4510px] rotate-[-8deg]" glow="bg-sky-400/25" tile="bg-sky-600" />
-      <FlairIcon icon={Leaf} className="right-6 top-[5230px] rotate-6" glow="bg-teal-400/25" tile="bg-teal-600" />
-      <FlairIcon icon={Handshake} className="left-6 top-[5600px] rotate-[-10deg]" glow="bg-indigo-400/25" tile="bg-indigo-600" />
-      <FlairIcon icon={Target} className="right-6 top-[6040px] rotate-12" glow="bg-orange-400/25" tile="bg-orange-600" />
-    </div>
-  );
-}
-
-function FlairIcon({
-  icon: Icon,
-  className,
-  glow,
-  tile,
-}: {
-  icon: typeof BadgeDollarSign;
-  className: string;
-  glow: string;
-  tile: string;
-}) {
-  return (
-    <div className={`absolute h-16 w-16 ${className}`}>
-      <div
-        className={`absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full blur-lg ${glow}`}
-      />
-      <div
-        className={`absolute left-1/2 top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl ${tile} text-white shadow-xl shadow-slate-300/80 ring-[3px] ring-white`}
-      >
-        <Icon className="h-5 w-5" aria-hidden="true" />
-      </div>
-    </div>
-  );
+  return null;
 }
 
 function Logo({ light = false }: { light?: boolean }) {
@@ -933,17 +885,17 @@ function TrustPill({
 
 function HeroPreview() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl shadow-slate-200/70">
+    <div className="gibraltar-panel overflow-hidden rounded-2xl">
       <div className="p-6">
         <p className="text-sm font-bold uppercase text-slate-500">Customer asked</p>
-        <div className="mt-3 rounded-xl bg-slate-200/70 p-5 text-lg leading-8">
+        <div className="mt-3 rounded-xl border border-white/10 bg-black/35 p-5 text-lg leading-8 text-slate-200">
           &quot;Hi, how much would it cost to book a birthday dinner for 8 people this
           Friday?&quot;
         </div>
       </div>
-      <div className="border-t border-slate-200 bg-white p-6">
+      <div className="border-t border-white/10 bg-white/[0.04] p-6">
         <p className="text-sm font-bold uppercase text-teal-600">Send this</p>
-        <div className="mt-3 rounded-xl border border-teal-200 bg-cyan-50 p-5 text-lg leading-8">
+        <div className="mt-3 rounded-xl border border-white/10 bg-black/40 p-5 text-lg leading-8 text-slate-100">
           &quot;Absolutely, we would love to host you. For 8 guests this Friday, I can
           check availability and send the best seating options. What time are you
           hoping to come in?&quot;
