@@ -16,6 +16,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  ShieldCheck,
   Sparkles,
   Trash2,
   Unplug,
@@ -33,6 +34,7 @@ type GmailMessage = {
   snippet: string;
   summary?: string;
   triage?: MessageTriage;
+  isJunk?: boolean;
 };
 
 type GmailMessageDetail = GmailMessage & {
@@ -102,6 +104,11 @@ type ReplyPayload = {
   ok?: boolean;
   reply?: string;
   sources?: ReplySources;
+  confidence?: ReplyConfidence;
+  riskFlags?: string[];
+  recommendedAction?: string;
+  missingContext?: string[];
+  playbook?: ReplyPlaybookSummary | null;
   error?: string;
 };
 
@@ -109,7 +116,41 @@ type ReplySources = {
   businessContext: boolean;
   voiceProfile: boolean;
   threadMessages: number;
+  playbook?: boolean;
 };
+
+type ReplyConfidence = "high" | "medium" | "low";
+
+type ReplyGuidance = {
+  confidence: ReplyConfidence;
+  riskFlags: string[];
+  recommendedAction: string;
+  missingContext: string[];
+  playbook: ReplyPlaybookSummary | null;
+};
+
+type ReplyPlaybook = {
+  id: string;
+  title: string;
+  category: PlaybookCategory;
+  guidance: string;
+  default_cta: string | null;
+  enabled: boolean;
+};
+
+type ReplyPlaybookSummary = {
+  id: string;
+  title: string;
+  category: string;
+};
+
+type PlaybookCategory =
+  | "pricing"
+  | "booking"
+  | "cancellation"
+  | "complaint"
+  | "follow_up"
+  | "general";
 
 type SearchChip = {
   label: string;
@@ -117,6 +158,7 @@ type SearchChip = {
 };
 
 type InboxFilter = "all" | "needs_reply" | TriageCategory;
+type InboxLane = "needs_reply" | "urgent" | "booking" | "complaint" | "low_priority" | "junk";
 
 type InboxFilterOption = {
   label: string;
@@ -135,6 +177,15 @@ const moreInboxFilters: InboxFilterOption[] = [
   { label: "Follow-up", value: "follow_up" },
   { label: "General", value: "general" },
   { label: "Low priority", value: "low_priority" },
+];
+
+const inboxLanes: Array<{ label: string; value: InboxLane }> = [
+  { label: "Needs reply", value: "needs_reply" },
+  { label: "Urgent", value: "urgent" },
+  { label: "Bookings", value: "booking" },
+  { label: "Issues", value: "complaint" },
+  { label: "Low priority", value: "low_priority" },
+  { label: "Junk removed", value: "junk" },
 ];
 
 const searchChips: SearchChip[] = [
@@ -169,6 +220,7 @@ export default function AppPage() {
   const [userEmail, setUserEmail] = useState("");
   const [payload, setPayload] = useState<MessagesPayload>({ connected: false, messages: [] });
   const [profile, setProfile] = useState<BusinessProfile>(emptyProfile);
+  const [playbooks, setPlaybooks] = useState<ReplyPlaybook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -181,12 +233,16 @@ export default function AppPage() {
   const [reviewMessageId, setReviewMessageId] = useState("");
   const [reviewThreadId, setReviewThreadId] = useState("");
   const [reviewMessageSubject, setReviewMessageSubject] = useState("");
+  const [reviewSummary, setReviewSummary] = useState("");
   const [reviewRecipient, setReviewRecipient] = useState("");
   const [reviewReply, setReviewReply] = useState("");
   const [reviewVariantLabel, setReviewVariantLabel] = useState("Original");
   const [reviewVariantInstruction, setReviewVariantInstruction] = useState("");
   const [reviewSources, setReviewSources] = useState<ReplySources | null>(null);
   const [reviewTriage, setReviewTriage] = useState<MessageTriage | null>(null);
+  const [reviewGuidance, setReviewGuidance] = useState<ReplyGuidance | null>(null);
+  const [selectedPlaybookId, setSelectedPlaybookId] = useState("");
+  const [activeLane, setActiveLane] = useState<InboxLane>("needs_reply");
   const [activeFilter, setActiveFilter] = useState<InboxFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [senderFilter, setSenderFilter] = useState("");
@@ -236,6 +292,7 @@ export default function AppPage() {
       if (options.pageToken) {
         params.set("pageToken", options.pageToken);
       }
+      params.set("includeJunk", "true");
       const response = await fetch(`/api/gmail/messages${params.size ? `?${params.toString()}` : ""}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -280,6 +337,19 @@ export default function AppPage() {
     }
   }, [accessToken, authedFetch]);
 
+  const loadPlaybooks = useCallback(async () => {
+    if (!accessToken) {
+      return;
+    }
+
+    const response = await authedFetch("/api/playbooks");
+    const body = (await response.json()) as { playbooks?: ReplyPlaybook[] };
+
+    if (response.ok) {
+      setPlaybooks(body.playbooks ?? []);
+    }
+  }, [accessToken, authedFetch]);
+
   const loadOnboarding = useCallback(async () => {
     if (!accessToken) {
       return;
@@ -314,8 +384,9 @@ export default function AppPage() {
 
   useEffect(() => {
     void loadProfile();
+    void loadPlaybooks();
     void loadOnboarding();
-  }, [loadOnboarding, loadProfile]);
+  }, [loadOnboarding, loadPlaybooks, loadProfile]);
 
   useEffect(() => {
     setShowTour(window.localStorage.getItem("gibraltar_onboarding_dismissed") !== "true");
@@ -380,7 +451,27 @@ export default function AppPage() {
     }
   }
 
-  const filteredMessages = payload.messages.filter((message) => {
+  const laneMessages = payload.messages.filter((message) => {
+    if (activeLane === "junk") {
+      return Boolean(message.isJunk);
+    }
+
+    if (message.isJunk) {
+      return false;
+    }
+
+    if (activeLane === "needs_reply") {
+      return message.triage?.needsReply ?? true;
+    }
+
+    if (activeLane === "urgent") {
+      return message.triage?.urgency === "high";
+    }
+
+    return message.triage?.category === activeLane;
+  });
+
+  const filteredMessages = laneMessages.filter((message) => {
     const sender = senderFilter.trim().toLowerCase();
 
     if (sender && !message.from.toLowerCase().includes(sender)) {
@@ -398,6 +489,39 @@ export default function AppPage() {
     return message.triage?.category === activeFilter;
   });
 
+  const laneCounts = inboxLanes.reduce<Record<InboxLane, number>>(
+    (counts, lane) => ({
+      ...counts,
+      [lane.value]: payload.messages.filter((message) => {
+        if (lane.value === "junk") {
+          return Boolean(message.isJunk);
+        }
+
+        if (message.isJunk) {
+          return false;
+        }
+
+        if (lane.value === "needs_reply") {
+          return message.triage?.needsReply ?? true;
+        }
+
+        if (lane.value === "urgent") {
+          return message.triage?.urgency === "high";
+        }
+
+        return message.triage?.category === lane.value;
+      }).length,
+    }),
+    {
+      needs_reply: 0,
+      urgent: 0,
+      booking: 0,
+      complaint: 0,
+      low_priority: 0,
+      junk: 0,
+    },
+  );
+
   async function generateReply(message: GmailMessage, instruction = "", variantLabel = instruction ? "Custom" : "Original") {
     setIsGeneratingReply(message.id);
     setError("");
@@ -406,10 +530,12 @@ export default function AppPage() {
     setReviewMessageId(message.id);
     setReviewThreadId(message.threadId);
     setReviewMessageSubject(message.subject);
+    setReviewSummary(message.summary || "");
     setReviewRecipient(message.from);
     setReviewTriage(message.triage ?? null);
     setReviewVariantLabel(variantLabel);
     setReviewVariantInstruction(instruction);
+    setReviewGuidance(null);
 
     try {
       const response = await authedFetch("/api/gmail/replies", {
@@ -419,6 +545,7 @@ export default function AppPage() {
           messageId: message.id,
           instruction,
           triage: message.triage,
+          playbookId: selectedPlaybookId || undefined,
         }),
       });
       const body = (await response.json()) as ReplyPayload;
@@ -429,6 +556,16 @@ export default function AppPage() {
 
       setReviewReply(body.reply);
       setReviewSources(body.sources ?? null);
+      setReviewGuidance({
+        confidence: body.confidence ?? "medium",
+        riskFlags: body.riskFlags ?? [],
+        recommendedAction: body.recommendedAction ?? "Review reply",
+        missingContext: body.missingContext ?? [],
+        playbook: body.playbook ?? null,
+      });
+      if (body.playbook?.id) {
+        setSelectedPlaybookId(body.playbook.id);
+      }
       await saveOnboardingEvent("first_reply_generated");
       setSuccess("Reply ready to review.");
     } catch (replyError) {
@@ -482,7 +619,9 @@ export default function AppPage() {
 
       setPayload((current) => ({
         ...current,
-        messages: current.messages.filter((currentMessage) => currentMessage.id !== message.id),
+        messages: current.messages.map((currentMessage) =>
+          currentMessage.id === message.id ? { ...currentMessage, isJunk: true } : currentMessage,
+        ),
       }));
       if (selectedMessage?.id === message.id) {
         setSelectedMessage(null);
@@ -490,6 +629,35 @@ export default function AppPage() {
       setSuccess("Message removed from Gibraltar review.");
     } catch (junkError) {
       setError(junkError instanceof Error ? junkError.message : "Could not remove that message from review.");
+    } finally {
+      setIsRemovingJunk("");
+    }
+  }
+
+  async function restoreJunk(message: GmailMessage) {
+    setIsRemovingJunk(message.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await authedFetch(`/api/gmail/messages/${encodeURIComponent(message.id)}/junk`, {
+        method: "DELETE",
+      });
+      const body = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(body.error ?? "Could not restore that message.");
+      }
+
+      setPayload((current) => ({
+        ...current,
+        messages: current.messages.map((currentMessage) =>
+          currentMessage.id === message.id ? { ...currentMessage, isJunk: false } : currentMessage,
+        ),
+      }));
+      setSuccess("Message restored to Gibraltar review.");
+    } catch (junkError) {
+      setError(junkError instanceof Error ? junkError.message : "Could not restore that message.");
     } finally {
       setIsRemovingJunk("");
     }
@@ -523,10 +691,13 @@ export default function AppPage() {
       setReviewMessageId("");
       setReviewThreadId("");
       setReviewMessageSubject("");
+      setReviewSummary("");
       setReviewRecipient("");
       setReviewReply("");
       setReviewSources(null);
       setReviewTriage(null);
+      setReviewGuidance(null);
+      setSelectedPlaybookId("");
       setReviewVariantLabel("Original");
       setReviewVariantInstruction("");
       await saveOnboardingEvent("first_email_created");
@@ -660,6 +831,9 @@ export default function AppPage() {
             <Link href="/activity" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
               Activity
             </Link>
+            <Link href="/memory" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
+              Memory
+            </Link>
             <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
               Settings
             </Link>
@@ -716,7 +890,9 @@ export default function AppPage() {
               setSetupChecklistDismissed(true);
             }}
           />
-        ) : null}
+        ) : (
+          <SystemReadyStatus />
+        )}
         {showTour ? <FirstRunTour onDismiss={dismissTour} /> : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
@@ -788,6 +964,30 @@ export default function AppPage() {
                 ) : null}
               </div>
             </form>
+            <div className="border-b border-slate-100 px-5 py-3">
+              <div className="flex flex-wrap gap-2">
+                {inboxLanes.map((lane) => (
+                  <button
+                    key={lane.value}
+                    type="button"
+                    onClick={() => {
+                      setActiveLane(lane.value);
+                      setActiveFilter("all");
+                    }}
+                    className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition ${
+                      activeLane === lane.value
+                        ? "bg-[#0b132b] text-white"
+                        : "border border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700"
+                    }`}
+                  >
+                    {lane.label}
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${activeLane === lane.value ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"}`}>
+                      {laneCounts[lane.value]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-100 px-5 py-3">
               <div className="flex flex-wrap gap-2">
                 {primaryInboxFilters.map((filter) => (
@@ -873,6 +1073,7 @@ export default function AppPage() {
                         onOpen={() => openMessage(message)}
                         onGenerate={() => generateReply(message)}
                         onRemoveJunk={() => removeJunk(message)}
+                        onRestoreJunk={() => restoreJunk(message)}
                       />
                     )) : <EmptyState title="No messages in this view" body="Try another filter, search Gmail, or load more results." />}
                   </div>
@@ -908,13 +1109,20 @@ export default function AppPage() {
             {reviewReply ? (
               <ReviewPanel
                 subject={reviewMessageSubject}
+                summary={reviewSummary}
+                recipient={reviewRecipient}
+                triage={reviewTriage}
                 reply={reviewReply}
                 isGenerating={Boolean(isGeneratingReply)}
                 isDrafting={Boolean(isDrafting)}
                 isCreatingReminder={isCreatingReminder}
                 sources={reviewSources}
+                guidance={reviewGuidance}
                 warnings={draftWarnings}
                 variantLabel={reviewVariantLabel}
+                playbooks={playbooks}
+                selectedPlaybookId={selectedPlaybookId}
+                onPlaybookChange={setSelectedPlaybookId}
                 onReplyChange={setReviewReply}
                 onCreateDraft={(sendNow) => {
                   if (sendNow) {
@@ -926,7 +1134,7 @@ export default function AppPage() {
                 onCreateReminder={createReminder}
                 onRevise={(instruction, label) =>
                   generateReply(
-                    { id: reviewMessageId, threadId: "", from: "", subject: reviewMessageSubject, date: "", snippet: "" },
+                    { id: reviewMessageId, threadId: reviewThreadId, from: reviewRecipient, subject: reviewMessageSubject, date: "", snippet: "", summary: reviewSummary, triage: reviewTriage ?? undefined },
                     instruction,
                     label,
                   )
@@ -1087,6 +1295,23 @@ function SetupChecklist({
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function SystemReadyStatus() {
+  return (
+    <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-teal-100 bg-teal-50 px-5 py-4 text-teal-950 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <CheckCircle2 className="h-5 w-5 text-teal-700" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-black uppercase text-teal-700">System ready</p>
+          <p className="text-sm font-semibold">Gmail, context, voice, first reply, and first draft setup are complete.</p>
+        </div>
+      </div>
+      <Link href="/settings" className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-sm font-black text-teal-800">
+        Tune settings
+      </Link>
     </section>
   );
 }
@@ -1277,6 +1502,7 @@ function MessageRow({
   onOpen,
   onGenerate,
   onRemoveJunk,
+  onRestoreJunk,
 }: {
   message: GmailMessage;
   busy: boolean;
@@ -1286,6 +1512,7 @@ function MessageRow({
   onOpen: () => void;
   onGenerate: () => void;
   onRemoveJunk: () => void;
+  onRestoreJunk: () => void;
 }) {
   const needsReply = message.triage?.needsReply ?? true;
   const brief = message.summary || "Summary unavailable.";
@@ -1327,16 +1554,29 @@ function MessageRow({
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <PencilLine className="h-4 w-4" aria-hidden="true" />}
           </button>
-          <button
-            type="button"
-            onClick={onRemoveJunk}
-            disabled={disabled}
-            aria-label={`Remove ${message.subject} from review`}
-            title="Remove junk"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-red-200 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300"
-          >
-            {isRemovingJunk ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
-          </button>
+          {message.isJunk ? (
+            <button
+              type="button"
+              onClick={onRestoreJunk}
+              disabled={disabled}
+              aria-label={`Restore ${message.subject} to review`}
+              title="Restore"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal-200 bg-teal-50 text-teal-700 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:translate-y-0"
+            >
+              {isRemovingJunk ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RotateCcw className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onRemoveJunk}
+              disabled={disabled}
+              aria-label={`Remove ${message.subject} from review`}
+              title="Remove junk"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-red-200 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300"
+            >
+              {isRemovingJunk ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -1383,70 +1623,135 @@ function TriageBadges({ triage, compact = false }: { triage: MessageTriage; comp
 }
 function ReviewPanel({
   subject,
+  summary,
+  recipient,
+  triage,
   reply,
   isGenerating,
   isDrafting,
   isCreatingReminder,
   sources,
+  guidance,
   warnings,
   variantLabel,
+  playbooks,
+  selectedPlaybookId,
+  onPlaybookChange,
   onReplyChange,
   onCreateDraft,
   onCreateReminder,
   onRevise,
 }: {
   subject: string;
+  summary: string;
+  recipient: string;
+  triage: MessageTriage | null;
   reply: string;
   isGenerating: boolean;
   isDrafting: boolean;
   isCreatingReminder: string;
   sources: ReplySources | null;
+  guidance: ReplyGuidance | null;
   warnings: string[];
   variantLabel: string;
+  playbooks: ReplyPlaybook[];
+  selectedPlaybookId: string;
+  onPlaybookChange: (value: string) => void;
   onReplyChange: (value: string) => void;
   onCreateDraft: (sendNow: boolean) => void;
   onCreateReminder: (days: number) => void;
   onRevise: (instruction: string, label: string) => void;
 }) {
+  const combinedWarnings = Array.from(new Set([...(guidance?.riskFlags ?? []), ...warnings]));
+  const missingContext = guidance?.missingContext ?? [];
+
   return (
-    <section>
-      <div className="flex items-center gap-2 text-teal-700">
-        <PencilLine className="h-5 w-5" aria-hidden="true" />
-        <p className="font-black">Review reply</p>
+    <section className="grid gap-5">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center gap-2 text-teal-700">
+          <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+          <p className="font-black">Reply command center</p>
+        </div>
+        <h2 className="mt-3 text-2xl font-black">{guidance?.recommendedAction ?? "Review reply"}</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{summary || subject}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <SourceBadge label={recipient || "Unknown sender"} active />
+          {triage ? <TriageBadges triage={triage} compact /> : null}
+          <SourceBadge label={`Confidence: ${guidance?.confidence ?? "medium"}`} active={guidance?.confidence !== "low"} />
+        </div>
       </div>
-      <h2 className="mt-3 text-2xl font-black">{subject}</h2>
-      <div className="mt-4 flex flex-wrap gap-2">
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-sm font-black uppercase text-slate-500">Reply playbook</span>
+          <select
+            value={selectedPlaybookId}
+            onChange={(event) => onPlaybookChange(event.target.value)}
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100"
+          >
+            <option value="">Auto-select best match</option>
+            {playbooks.filter((playbook) => playbook.enabled).map((playbook) => (
+              <option key={playbook.id} value={playbook.id}>
+                {playbook.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-black uppercase text-slate-500">Used for this draft</p>
+          <p className="mt-2 font-black">{guidance?.playbook?.title ?? "No playbook selected"}</p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
         <SourceBadge label="Business context" active={Boolean(sources?.businessContext)} />
         <SourceBadge label="Owner voice" active={Boolean(sources?.voiceProfile)} />
+        <SourceBadge label="Playbook" active={Boolean(sources?.playbook)} />
         <SourceBadge label={`${sources?.threadMessages ?? 1} thread messages`} active />
         <SourceBadge label={`Variant: ${variantLabel}`} active />
       </div>
-      <textarea value={reply} onChange={(event) => onReplyChange(event.target.value)} rows={12} className="mt-5 w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-4 leading-7 text-slate-800 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100" />
-      <div className="mt-4 flex flex-wrap gap-2">
-        <ReviewButton label="A: Concise" disabled={isGenerating} onClick={() => onRevise("Create variant A: a concise, direct reply with the minimum needed next step.", "A: Concise")} />
-        <ReviewButton label="B: Warm" disabled={isGenerating} onClick={() => onRevise("Create variant B: a warmer, more personable reply that still stays concise.", "B: Warm")} />
-        <ReviewButton label="C: Conversion" disabled={isGenerating} onClick={() => onRevise("Create variant C: a reply optimized for moving the customer to the next action without sounding pushy.", "C: Conversion")} />
-        <ReviewButton label="Ask availability" disabled={isGenerating} onClick={() => onRevise("Ask the customer for their availability and any details needed to move forward.", "Availability")} />
-        <ReviewButton label="Add booking link" disabled={isGenerating} onClick={() => onRevise("Include the booking link if one is available in the business context.", "Booking link")} />
+
+      <textarea value={reply} onChange={(event) => onReplyChange(event.target.value)} rows={15} className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base leading-8 text-slate-800 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100" />
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-sm font-black uppercase text-slate-500">Quick rewrites</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <ReviewButton label="Shorter" disabled={isGenerating} onClick={() => onRevise("Make this draft shorter while preserving the key next step.", "Shorter")} />
+          <ReviewButton label="Warmer" disabled={isGenerating} onClick={() => onRevise("Make this draft warmer and more personable without adding fluff.", "Warmer")} />
+          <ReviewButton label="More direct" disabled={isGenerating} onClick={() => onRevise("Make this draft more direct and action-oriented while staying polite.", "More direct")} />
+          <ReviewButton label="Add booking link" disabled={isGenerating} onClick={() => onRevise("Include the booking link if one is available in the business context.", "Booking link")} />
+          <ReviewButton label="Remove promise" disabled={isGenerating} onClick={() => onRevise("Remove or soften any promises, availability claims, pricing certainty, or guarantees that the business context does not prove.", "Remove promise")} />
+          <ReviewButton label="Custom instruction" disabled={isGenerating} onClick={() => {
+            const instruction = window.prompt("How should Gibraltar revise this draft?");
+            if (instruction?.trim()) {
+              onRevise(instruction.trim(), "Custom");
+            }
+          }} />
+        </div>
         <button type="button" onClick={() => onRevise("", "Original")} disabled={isGenerating} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700 disabled:cursor-not-allowed disabled:text-slate-300">
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
           Regenerate
         </button>
       </div>
-      {warnings.length ? (
-        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+
+      {combinedWarnings.length || missingContext.length ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
           <div className="flex items-center gap-2">
             <CircleAlert className="h-4 w-4" aria-hidden="true" />
-            <p className="text-sm font-black uppercase">Check missing info</p>
+            <p className="text-sm font-black uppercase">Review before sending</p>
           </div>
           <ul className="mt-3 space-y-2 text-sm font-semibold leading-6">
-            {warnings.map((warning) => (
+            {combinedWarnings.map((warning) => (
               <li key={warning}>{warning}</li>
+            ))}
+            {missingContext.map((item) => (
+              <li key={item}>Missing context: {item}</li>
             ))}
           </ul>
         </div>
       ) : null}
-      <div className="mt-5 grid gap-2 sm:grid-cols-2">
+
+      <div className="grid gap-2 sm:grid-cols-2">
         <button type="button" onClick={() => onCreateDraft(false)} disabled={isDrafting || !reply.trim()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-5 text-sm font-black text-teal-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 disabled:hover:translate-y-0">
           {isDrafting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
           Create Gmail draft
@@ -1456,7 +1761,7 @@ function ReviewPanel({
           Send now
         </button>
       </div>
-      <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <p className="text-sm font-black uppercase text-slate-500">Follow up later</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <ReminderButton label="Tomorrow" days={1} busy={isCreatingReminder} onClick={onCreateReminder} />

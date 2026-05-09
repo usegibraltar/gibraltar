@@ -58,8 +58,16 @@ export async function GET(request: Request) {
   const failed = rows.filter((row) => row.status === "failed").length;
   const sent = rows.filter((row) => row.sent_at).length;
   const responded = respondedEventKeys.size;
+  const [followUpCount, completedFollowUpCount, junkCount, categoryRows] = await Promise.all([
+    countRows("follow_up_reminders", auth.user.id, since.toISOString()),
+    countRows("follow_up_reminders", auth.user.id, since.toISOString(), { status: "completed" }),
+    countRows("gmail_messages", auth.user.id, since.toISOString(), { is_junk: true }),
+    loadCategoryRows(auth.user.id, since.toISOString()),
+  ]);
   const variants = new Map<string, { label: string; created: number; sent: number; responded: number; conversionRate: number; failed: number; total: number }>();
   const daily = new Map<string, number>();
+  const inquiryTypes = summarizeInquiryTypes(categoryRows);
+  const urgencyMix = summarizeUrgencyMix(categoryRows);
 
   for (const row of rows) {
     const label = row.variant_label || "Original";
@@ -106,6 +114,12 @@ export async function GET(request: Request) {
       successRate: rows.length ? Math.round((created / rows.length) * 100) : 0,
       sendRate: created ? Math.round((sent / created) * 100) : 0,
       conversionRate: sent ? Math.round((responded / sent) * 100) : 0,
+      handled: created + followUpCount + junkCount,
+      followUpsScheduled: followUpCount,
+      followUpsCompleted: completedFollowUpCount,
+      junkRemoved: junkCount,
+      inquiryTypes,
+      urgencyMix,
       variants: Array.from(variants.values())
         .map((variant) => ({
           ...variant,
@@ -121,6 +135,88 @@ export async function GET(request: Request) {
         .map((row) => row.source_subject),
     },
   });
+}
+
+async function countRows(
+  table: "follow_up_reminders" | "gmail_messages",
+  userId: string,
+  since: string,
+  filter?: { status?: string; is_junk?: boolean },
+) {
+  let query = getSupabaseAdmin()
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", since);
+
+  if (filter?.status) {
+    query = query.eq("status", filter.status);
+  }
+
+  if (typeof filter?.is_junk === "boolean") {
+    query = query.eq("is_junk", filter.is_junk);
+  }
+
+  const { count, error } = await query;
+
+  if (error) {
+    console.error(`${table} analytics count failed`, error);
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+async function loadCategoryRows(userId: string, since: string) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("gmail_messages")
+    .select("triage_category,triage_urgency")
+    .eq("user_id", userId)
+    .gte("created_at", since)
+    .returns<Array<{ triage_category: string | null; triage_urgency: string | null }>>();
+
+  if (error) {
+    console.error("Gmail message analytics lookup failed", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+function summarizeInquiryTypes(rows: Array<{ triage_category: string | null }>) {
+  const labels: Record<string, string> = {
+    booking: "Bookings",
+    pricing: "Pricing",
+    complaint: "Issues",
+    follow_up: "Follow-ups",
+    general: "General",
+    low_priority: "Low priority",
+  };
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    const key = row.triage_category || "general";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .map(([category, count]) => ({ category, label: labels[category] ?? category, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function summarizeUrgencyMix(rows: Array<{ triage_urgency: string | null }>) {
+  const counts = new Map<string, number>([
+    ["high", 0],
+    ["medium", 0],
+    ["low", 0],
+  ]);
+
+  for (const row of rows) {
+    const key = row.triage_urgency === "high" || row.triage_urgency === "medium" ? row.triage_urgency : "low";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries()).map(([urgency, count]) => ({ urgency, count }));
 }
 
 async function findRespondedEvents({
@@ -204,6 +300,12 @@ function emptySummary() {
     successRate: 0,
     sendRate: 0,
     conversionRate: 0,
+    handled: 0,
+    followUpsScheduled: 0,
+    followUpsCompleted: 0,
+    junkRemoved: 0,
+    inquiryTypes: [],
+    urgencyMix: [],
     variants: [],
     daily: [],
     recentSubjects: [],

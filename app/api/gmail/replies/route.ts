@@ -8,6 +8,7 @@ type GenerateReplyBody = {
   messageId?: unknown;
   instruction?: unknown;
   triage?: unknown;
+  playbookId?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -32,6 +33,14 @@ export async function POST(request: Request) {
     body.triage && typeof body.triage === "object"
       ? JSON.stringify(body.triage).slice(0, 500)
       : "";
+  const triageCategory =
+    body.triage &&
+    typeof body.triage === "object" &&
+    "category" in body.triage &&
+    typeof body.triage.category === "string"
+      ? body.triage.category
+      : "";
+  const playbookId = typeof body.playbookId === "string" ? body.playbookId : "";
 
   if (!messageId) {
     return jsonError("Please choose a Gmail message first.");
@@ -53,6 +62,8 @@ export async function POST(request: Request) {
       accessToken,
       userId: auth.user.id,
       messageId,
+      triageCategory,
+      playbookId,
       instruction: [instruction, triage ? `Message triage: ${triage}` : ""]
         .filter(Boolean)
         .join("\n"),
@@ -69,6 +80,11 @@ export async function POST(request: Request) {
         snippet: generated.message.snippet,
       },
       sources: generated.sources,
+      confidence: generated.confidence,
+      riskFlags: generated.riskFlags,
+      recommendedAction: generated.recommendedAction,
+      missingContext: generated.missingContext,
+      playbook: generated.playbook,
     });
   } catch (replyError) {
     console.error("Gmail reply generation failed", replyError);

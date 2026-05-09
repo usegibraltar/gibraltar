@@ -467,3 +467,25 @@ export async function markMessageAsJunk({
     throw new Error("Could not remove that message from review.");
   }
 }
+
+export async function restoreMessageFromJunk({
+  userId,
+  messageId,
+}: {
+  userId: string;
+  messageId: string;
+}) {
+  const { error } = await getSupabaseAdmin()
+    .from("gmail_messages")
+    .update({
+      is_junk: false,
+      junked_at: null,
+    })
+    .eq("user_id", userId)
+    .eq("gmail_message_id", messageId);
+
+  if (error) {
+    console.error("Stored Gmail junk restore failed", error);
+    throw new Error("Could not restore that message.");
+  }
+}

@@ -8,9 +8,15 @@ export type DraftAnalytics = {
     sent: number;
     responded: number;
     failed: number;
+    handled: number;
+    followUpsScheduled: number;
+    followUpsCompleted: number;
+    junkRemoved: number;
     successRate: number;
     sendRate: number;
     conversionRate: number;
+    inquiryTypes: Array<{ category: string; label: string; count: number }>;
+    urgencyMix: Array<{ urgency: string; count: number }>;
     variants: Array<{
       label: string;
       created: number;
@@ -51,8 +57,11 @@ export function AnalyticsPanel({ analytics }: { analytics: DraftAnalytics | null
   return (
     <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+        <MetricCard label="Handled" value={String(summary.handled)} detail={`Last ${summary.windowDays} days`} />
         <MetricCard label="Drafts" value={String(summary.created)} detail={`Last ${summary.windowDays} days`} />
         <MetricCard label="Sent now" value={String(summary.sent)} detail={`${summary.sendRate}% of created drafts`} />
+        <MetricCard label="Follow-ups" value={String(summary.followUpsScheduled)} detail={`${summary.followUpsCompleted} completed`} />
+        <MetricCard label="Junk removed" value={String(summary.junkRemoved)} detail="Removed from Gibraltar review" />
         <MetricCard
           label="Response rate"
           value={`${summary.conversionRate}%`}
@@ -61,6 +70,19 @@ export function AnalyticsPanel({ analytics }: { analytics: DraftAnalytics | null
         />
       </div>
       <div className="grid gap-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-black uppercase text-slate-500">Most common inquiry types</p>
+          <div className="mt-3 grid gap-2">
+            {summary.inquiryTypes.length ? summary.inquiryTypes.slice(0, 6).map((item) => (
+              <div key={item.category} className="flex items-center justify-between rounded-lg bg-white p-3">
+                <p className="font-black">{item.label}</p>
+                <p className="text-sm font-semibold text-slate-500">{item.count}</p>
+              </div>
+            )) : (
+              <p className="rounded-lg bg-white p-4 text-sm leading-6 text-slate-600">No categorized messages yet.</p>
+            )}
+          </div>
+        </div>
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-sm font-black uppercase text-slate-500">Variant conversion</p>
           <div className="mt-3 grid gap-2">

@@ -91,6 +91,7 @@ export async function GET(request: Request) {
     "gmail_connections",
     "gmail_draft_events",
     "business_profiles",
+    "reply_playbooks",
     "follow_up_reminders",
     "audit_events",
     "user_onboarding_events",

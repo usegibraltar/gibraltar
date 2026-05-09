@@ -205,6 +205,59 @@ before update on public.business_profiles
 for each row
 execute function public.set_updated_at();
 
+create table if not exists public.reply_playbooks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  user_email text not null,
+  title text not null,
+  category text not null check (category in ('pricing', 'booking', 'cancellation', 'complaint', 'follow_up', 'general')),
+  guidance text not null,
+  default_cta text,
+  enabled boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.reply_playbooks
+  add column if not exists user_id uuid,
+  add column if not exists user_email text,
+  add column if not exists title text,
+  add column if not exists category text,
+  add column if not exists guidance text,
+  add column if not exists default_cta text,
+  add column if not exists enabled boolean not null default true,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'reply_playbooks_category_check'
+  ) then
+    alter table public.reply_playbooks
+      add constraint reply_playbooks_category_check
+      check (category in ('pricing', 'booking', 'cancellation', 'complaint', 'follow_up', 'general'));
+  end if;
+end;
+$$;
+
+create index if not exists reply_playbooks_user_id_idx
+on public.reply_playbooks (user_id);
+
+alter table public.reply_playbooks enable row level security;
+
+drop policy if exists "No public reads for reply playbooks" on public.reply_playbooks;
+drop policy if exists "No public writes for reply playbooks" on public.reply_playbooks;
+
+drop trigger if exists set_reply_playbooks_updated_at on public.reply_playbooks;
+
+create trigger set_reply_playbooks_updated_at
+before update on public.reply_playbooks
+for each row
+execute function public.set_updated_at();
+
 create table if not exists public.gmail_draft_events (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,

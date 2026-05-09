@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getBearerToken, jsonError } from "../../../../../lib/api";
 import { getFreshAccessToken, getMessageDetail } from "../../../../../lib/gmail";
-import { markMessageAsJunk } from "../../../../../lib/gmail-message-store";
+import { markMessageAsJunk, restoreMessageFromJunk } from "../../../../../lib/gmail-message-store";
 import { getSupabaseAdmin, GmailConnection, requireApprovedUser } from "../../../../../lib/supabase";
 
 type Params = {
@@ -48,6 +48,35 @@ export async function POST(request: Request, { params }: Params) {
     console.error("Gmail junk removal failed", junkError);
     return jsonError(
       junkError instanceof Error ? junkError.message : "Could not remove that message from review.",
+      500,
+    );
+  }
+}
+
+export async function DELETE(request: Request, { params }: Params) {
+  const auth = await requireApprovedUser(getBearerToken(request));
+
+  if (!auth.user) {
+    return jsonError(auth.error, auth.status);
+  }
+
+  const { id } = await params;
+
+  if (!id) {
+    return jsonError("Choose a Gmail message first.");
+  }
+
+  try {
+    await restoreMessageFromJunk({
+      userId: auth.user.id,
+      messageId: id,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (restoreError) {
+    console.error("Gmail junk restore failed", restoreError);
+    return jsonError(
+      restoreError instanceof Error ? restoreError.message : "Could not restore that message.",
       500,
     );
   }

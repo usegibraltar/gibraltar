@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { getMessageDetail, getThreadDetail, GmailMessageDetail, GmailThreadDetail } from "./gmail";
+import { choosePlaybook, loadEnabledPlaybooks, ReplyPlaybook } from "./playbooks";
 import { getSupabaseAdmin } from "./supabase";
 
 type BusinessProfile = {
@@ -21,8 +22,27 @@ const responseSchema = {
       type: "string",
       description: "A concise, natural email reply with a clear next step.",
     },
+    confidence: {
+      type: "string",
+      enum: ["high", "medium", "low"],
+      description: "How confident Gibraltar is that the reply is ready for owner review.",
+    },
+    riskFlags: {
+      type: "array",
+      items: { type: "string" },
+      description: "Short warnings the business owner should verify before sending.",
+    },
+    recommendedAction: {
+      type: "string",
+      description: "A short action label for the owner, such as Reply now or Verify pricing.",
+    },
+    missingContext: {
+      type: "array",
+      items: { type: "string" },
+      description: "Business details that would make this reply safer or more useful.",
+    },
   },
-  required: ["reply"],
+  required: ["reply", "confidence", "riskFlags", "recommendedAction", "missingContext"],
   additionalProperties: false,
 } as const;
 
@@ -43,21 +63,27 @@ export async function generateGmailReply({
   userId,
   messageId,
   instruction,
+  triageCategory,
+  playbookId,
 }: {
   accessToken: string;
   userId: string;
   messageId: string;
   instruction?: string;
+  triageCategory?: string;
+  playbookId?: string;
 }) {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("Gibraltar needs an OpenAI API key before it can draft replies.");
   }
 
-  const [message, profile] = await Promise.all([
+  const [message, profile, playbooks] = await Promise.all([
     getMessageDetail(accessToken, messageId),
     loadBusinessProfile(userId),
+    loadEnabledPlaybooks(userId),
   ]);
   const thread = await getThreadDetail(accessToken, message.threadId);
+  const playbook = choosePlaybook({ playbooks, playbookId, category: triageCategory });
 
   const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -85,6 +111,9 @@ export async function generateGmailReply({
           `Never promise: ${profile?.never_promise || "Not provided"}`,
           `Owner voice profile: ${profile?.voice_profile || "Not learned yet"}`,
           "",
+          "Reply playbook:",
+          formatPlaybook(playbook),
+          "",
           instruction ? `Revision instruction: ${instruction}` : "Revision instruction: None",
           "",
           "Selected customer email:",
@@ -98,7 +127,7 @@ export async function generateGmailReply({
           "Conversation thread context:",
           formatThreadContext(thread, message.id),
           "",
-          "Write a reply draft the business owner can review in Gmail.",
+          "Write a reply draft the business owner can review in Gmail. Also return concise confidence, advisory risk flags, a recommended owner action, and any missing business context. Do not block sending; flags are advisory.",
         ].join("\n"),
       },
     ],
@@ -112,11 +141,22 @@ export async function generateGmailReply({
     },
   });
 
-  const parsed = JSON.parse(aiResponse.output_text) as { reply: string };
+  const parsed = JSON.parse(aiResponse.output_text) as ReplyGenerationBody;
 
   return {
     message,
     reply: parsed.reply,
+    confidence: normalizeConfidence(parsed.confidence),
+    riskFlags: cleanList(parsed.riskFlags, 4),
+    recommendedAction: cleanText(parsed.recommendedAction, "Review reply"),
+    missingContext: cleanList(parsed.missingContext, 4),
+    playbook: playbook
+      ? {
+          id: playbook.id,
+          title: playbook.title,
+          category: playbook.category,
+        }
+      : null,
     sources: {
       businessContext: Boolean(
         profile?.business_name ||
@@ -128,8 +168,47 @@ export async function generateGmailReply({
       ),
       voiceProfile: Boolean(profile?.voice_profile),
       threadMessages: thread.messages.length,
+      playbook: Boolean(playbook),
     },
   };
+}
+
+type ReplyGenerationBody = {
+  reply: string;
+  confidence: string;
+  riskFlags: string[];
+  recommendedAction: string;
+  missingContext: string[];
+};
+
+function cleanText(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 80) : fallback;
+}
+
+function cleanList(values: unknown, maxItems: number) {
+  return Array.isArray(values)
+    ? values
+        .filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
+        .map((value) => value.trim().slice(0, 120))
+        .slice(0, maxItems)
+    : [];
+}
+
+function normalizeConfidence(value: unknown): "high" | "medium" | "low" {
+  return value === "high" || value === "medium" || value === "low" ? value : "medium";
+}
+
+function formatPlaybook(playbook: ReplyPlaybook | null) {
+  if (!playbook) {
+    return "No matching playbook selected.";
+  }
+
+  return [
+    `Title: ${playbook.title}`,
+    `Category: ${playbook.category}`,
+    `Guidance: ${playbook.guidance}`,
+    `Default CTA: ${playbook.default_cta || "Not provided"}`,
+  ].join("\n");
 }
 
 function formatThreadContext(thread: GmailThreadDetail, selectedMessageId: string) {
@@ -161,9 +240,19 @@ function formatThreadContext(thread: GmailThreadDetail, selectedMessageId: strin
 export type GeneratedReply = {
   message: GmailMessageDetail;
   reply: string;
+  confidence: "high" | "medium" | "low";
+  riskFlags: string[];
+  recommendedAction: string;
+  missingContext: string[];
+  playbook: {
+    id: string;
+    title: string;
+    category: string;
+  } | null;
   sources: {
     businessContext: boolean;
     voiceProfile: boolean;
     threadMessages: number;
+    playbook: boolean;
   };
 };

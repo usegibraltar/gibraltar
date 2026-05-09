@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, History, Loader2, LogOut, Mail, Save, Settings, Sparkles, Unplug } from "lucide-react";
+import { BookOpen, CheckCircle2, History, Loader2, LogOut, Mail, Save, Settings, Sparkles, Trash2, Unplug } from "lucide-react";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { getSupabaseBrowser } from "../lib/supabase-browser";
 
@@ -27,6 +27,26 @@ type VoiceSample = {
   body: string;
 };
 
+type PlaybookCategory = "pricing" | "booking" | "cancellation" | "complaint" | "follow_up" | "general";
+
+type ReplyPlaybook = {
+  id: string;
+  title: string;
+  category: PlaybookCategory;
+  guidance: string;
+  default_cta: string | null;
+  enabled: boolean;
+};
+
+type PlaybookDraft = {
+  id: string;
+  title: string;
+  category: PlaybookCategory;
+  guidance: string;
+  defaultCta: string;
+  enabled: boolean;
+};
+
 const emptyProfile: BusinessProfile = {
   businessName: "",
   businessType: "",
@@ -41,6 +61,75 @@ const emptyProfile: BusinessProfile = {
   voiceLearnedAt: null,
 };
 
+const defaultPlaybook: PlaybookDraft = {
+  id: "",
+  title: "",
+  category: "general",
+  guidance: "",
+  defaultCta: "",
+  enabled: true,
+};
+
+const playbookCategories: Array<{ label: string; value: PlaybookCategory }> = [
+  { label: "Pricing inquiry", value: "pricing" },
+  { label: "Booking request", value: "booking" },
+  { label: "Cancellation/reschedule", value: "cancellation" },
+  { label: "Complaint", value: "complaint" },
+  { label: "Follow-up", value: "follow_up" },
+  { label: "General question", value: "general" },
+];
+
+const starterPlaybooks: PlaybookDraft[] = [
+  {
+    id: "",
+    title: "Pricing inquiry",
+    category: "pricing",
+    guidance: "Answer pricing questions clearly without inventing exact prices unless they are already in business context. Explain what affects the quote, ask for the details needed to estimate accurately, and move the customer toward the next step.",
+    defaultCta: "Ask for the details needed to provide an accurate quote.",
+    enabled: true,
+  },
+  {
+    id: "",
+    title: "Booking request",
+    category: "booking",
+    guidance: "Help the customer book quickly. Mention the booking link or phone number when available, ask for preferred times if needed, and avoid promising availability unless it is explicitly known.",
+    defaultCta: "Invite the customer to book or share their preferred time.",
+    enabled: true,
+  },
+  {
+    id: "",
+    title: "Complaint",
+    category: "complaint",
+    guidance: "Acknowledge the issue, sound calm and accountable, avoid defensiveness, and move the customer toward a practical next step. Do not admit fault beyond what the business context supports.",
+    defaultCta: "Ask for the best way to resolve or continue the conversation.",
+    enabled: true,
+  },
+  {
+    id: "",
+    title: "Follow-up",
+    category: "follow_up",
+    guidance: "Keep the reply brief and helpful. Reference the prior conversation, make the next step easy, and avoid sounding pushy or automated.",
+    defaultCta: "Ask whether they would like to move forward or need anything else.",
+    enabled: true,
+  },
+  {
+    id: "",
+    title: "Cancellation or reschedule",
+    category: "cancellation",
+    guidance: "Be understanding and efficient. Confirm the cancellation or reschedule request, ask for the needed timing details, and mention any policy only if the business context includes it.",
+    defaultCta: "Ask for the new preferred time or confirm the requested change.",
+    enabled: true,
+  },
+  {
+    id: "",
+    title: "General question",
+    category: "general",
+    guidance: "Answer the customer directly in a friendly, concise way. Use business context where available, avoid making unsupported claims, and end with a clear next step.",
+    defaultCta: "Offer to help with the next question or next step.",
+    enabled: true,
+  },
+];
+
 export default function SettingsPage() {
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [accessToken, setAccessToken] = useState("");
@@ -49,12 +138,16 @@ export default function SettingsPage() {
   const [gmailEmail, setGmailEmail] = useState("");
   const [voiceSamples, setVoiceSamples] = useState<VoiceSample[]>([]);
   const [selectedVoiceSampleIds, setSelectedVoiceSampleIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"gmail" | "context" | "voice" | "account">("gmail");
+  const [playbooks, setPlaybooks] = useState<ReplyPlaybook[]>([]);
+  const [playbookDraft, setPlaybookDraft] = useState<PlaybookDraft>(defaultPlaybook);
+  const [activeTab, setActiveTab] = useState<"gmail" | "context" | "voice" | "playbooks" | "account">("gmail");
   const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingPlaybook, setIsSavingPlaybook] = useState(false);
+  const [isDeletingPlaybook, setIsDeletingPlaybook] = useState("");
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
   const [isLearningVoice, setIsLearningVoice] = useState(false);
   const [error, setError] = useState("");
@@ -96,12 +189,14 @@ export default function SettingsPage() {
     setError("");
 
     try {
-      const [profileResponse, gmailResponse] = await Promise.all([
+      const [profileResponse, gmailResponse, playbooksResponse] = await Promise.all([
         fetch("/api/profile", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/gmail/status", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/playbooks", { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const profileBody = (await profileResponse.json()) as { profile?: BusinessProfile; error?: string };
       const gmailBody = (await gmailResponse.json()) as { connected?: boolean; gmailEmail?: string | null; error?: string };
+      const playbooksBody = (await playbooksResponse.json()) as { playbooks?: ReplyPlaybook[]; error?: string };
 
       if (!profileResponse.ok) {
         throw new Error(profileBody.error ?? "Could not load business context.");
@@ -111,8 +206,13 @@ export default function SettingsPage() {
         throw new Error(gmailBody.error ?? "Could not load Gmail status.");
       }
 
+      if (!playbooksResponse.ok) {
+        throw new Error(playbooksBody.error ?? "Could not load reply playbooks.");
+      }
+
       setProfile(profileBody.profile ?? emptyProfile);
       setGmailEmail(gmailBody.connected ? gmailBody.gmailEmail ?? "Connected" : "");
+      setPlaybooks(playbooksBody.playbooks ?? []);
     } catch (loadError) {
       setError(friendlyErrorMessage(loadError, "Could not load settings."));
     } finally {
@@ -246,6 +346,77 @@ export default function SettingsPage() {
     }
   }
 
+  function editPlaybook(playbook: ReplyPlaybook) {
+    setPlaybookDraft({
+      id: playbook.id,
+      title: playbook.title,
+      category: playbook.category,
+      guidance: playbook.guidance,
+      defaultCta: playbook.default_cta ?? "",
+      enabled: playbook.enabled,
+    });
+  }
+
+  async function savePlaybook() {
+    setIsSavingPlaybook(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const url = playbookDraft.id ? `/api/playbooks/${encodeURIComponent(playbookDraft.id)}` : "/api/playbooks";
+      const response = await authedFetch(url, {
+        method: playbookDraft.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(playbookDraft),
+      });
+      const body = (await response.json()) as { playbook?: ReplyPlaybook; error?: string };
+
+      if (!response.ok || !body.playbook) {
+        throw new Error(body.error ?? "Could not save reply playbook.");
+      }
+
+      const savedPlaybook = body.playbook;
+      setPlaybooks((current) =>
+        playbookDraft.id
+          ? current.map((playbook) => (playbook.id === savedPlaybook.id ? savedPlaybook : playbook))
+          : [...current, savedPlaybook],
+      );
+      setPlaybookDraft(defaultPlaybook);
+      setSuccess("Reply playbook saved.");
+    } catch (playbookError) {
+      setError(friendlyErrorMessage(playbookError, "Could not save reply playbook."));
+    } finally {
+      setIsSavingPlaybook(false);
+    }
+  }
+
+  async function deletePlaybook(id: string) {
+    setIsDeletingPlaybook(id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await authedFetch(`/api/playbooks/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const body = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(body.error ?? "Could not delete reply playbook.");
+      }
+
+      setPlaybooks((current) => current.filter((playbook) => playbook.id !== id));
+      if (playbookDraft.id === id) {
+        setPlaybookDraft(defaultPlaybook);
+      }
+      setSuccess("Reply playbook deleted.");
+    } catch (playbookError) {
+      setError(friendlyErrorMessage(playbookError, "Could not delete reply playbook."));
+    } finally {
+      setIsDeletingPlaybook("");
+    }
+  }
+
   function toggleVoiceSample(id: string) {
     setSelectedVoiceSampleIds((current) =>
       current.includes(id) ? current.filter((sampleId) => sampleId !== id) : [...current, id],
@@ -271,6 +442,8 @@ export default function SettingsPage() {
           <div className="flex flex-wrap gap-2">
             <NavLink href="/app" label="Replies" />
             <NavLink href="/analytics" label="Analytics" />
+            <NavLink href="/activity" label="Activity" />
+            <NavLink href="/memory" label="Memory" />
             <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white">Settings</Link>
             <NavLink href="/admin" label="Admin" />
             <button type="button" onClick={signOut} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-red-200 hover:text-red-700">
@@ -307,10 +480,11 @@ export default function SettingsPage() {
         ) : (
           <>
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-200/60">
-            <div className="grid gap-2 sm:grid-cols-4">
+            <div className="grid gap-2 sm:grid-cols-5">
               <SettingsTab label="Gmail" active={activeTab === "gmail"} onClick={() => setActiveTab("gmail")} />
               <SettingsTab label="Business context" active={activeTab === "context"} onClick={() => setActiveTab("context")} />
               <SettingsTab label="Voice" active={activeTab === "voice"} onClick={() => setActiveTab("voice")} />
+              <SettingsTab label="Playbooks" active={activeTab === "playbooks"} onClick={() => setActiveTab("playbooks")} />
               <SettingsTab label="Account" active={activeTab === "account"} onClick={() => setActiveTab("account")} />
             </div>
           </div>
@@ -413,6 +587,97 @@ export default function SettingsPage() {
                 )}
               </div>
             </section>
+            ) : null}
+
+            {activeTab === "playbooks" ? (
+              <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-teal-700" aria-hidden="true" />
+                    <h2 className="text-2xl font-black">{playbookDraft.id ? "Edit playbook" : "New playbook"}</h2>
+                  </div>
+                  {!playbookDraft.id ? (
+                    <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50 p-4">
+                      <p className="text-sm font-black uppercase text-teal-700">Starter templates</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {starterPlaybooks.map((starter) => (
+                          <button
+                            key={starter.title}
+                            type="button"
+                            onClick={() => setPlaybookDraft(starter)}
+                            className="min-h-10 rounded-xl border border-teal-200 bg-white px-3 text-sm font-black text-teal-800 transition hover:-translate-y-0.5"
+                          >
+                            {starter.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="mt-5 grid gap-4">
+                    <Field label="Title" value={playbookDraft.title} onChange={(value) => setPlaybookDraft({ ...playbookDraft, title: value })} />
+                    <label className="block">
+                      <span className="text-sm font-bold text-slate-700">Category</span>
+                      <select value={playbookDraft.category} onChange={(event) => setPlaybookDraft({ ...playbookDraft, category: event.target.value as PlaybookCategory })} className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100">
+                        {playbookCategories.map((category) => (
+                          <option key={category.value} value={category.value}>{category.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <Textarea label="Guidance" value={playbookDraft.guidance} onChange={(value) => setPlaybookDraft({ ...playbookDraft, guidance: value })} />
+                    <Textarea label="Default CTA" value={playbookDraft.defaultCta} onChange={(value) => setPlaybookDraft({ ...playbookDraft, defaultCta: value })} />
+                    <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-black text-slate-700">
+                      <input type="checkbox" checked={playbookDraft.enabled} onChange={(event) => setPlaybookDraft({ ...playbookDraft, enabled: event.target.checked })} className="h-4 w-4 accent-teal-600" />
+                      Enabled for reply generation
+                    </label>
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <button type="button" onClick={savePlaybook} disabled={isSavingPlaybook} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                      {isSavingPlaybook ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
+                      Save playbook
+                    </button>
+                    {playbookDraft.id ? (
+                      <button type="button" onClick={() => setPlaybookDraft(defaultPlaybook)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700">
+                        New playbook
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black uppercase text-teal-600">Saved playbooks</p>
+                      <h2 className="text-2xl font-black">{playbooks.length} total</h2>
+                    </div>
+                  </div>
+                  <div className="mt-5 grid gap-3">
+                    {playbooks.length ? playbooks.map((playbook) => (
+                      <article key={playbook.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-black">{playbook.title}</p>
+                              <span className={`rounded-full px-2 py-1 text-xs font-black uppercase ${playbook.enabled ? "bg-teal-100 text-teal-800" : "bg-slate-200 text-slate-600"}`}>
+                                {playbook.enabled ? "Enabled" : "Off"}
+                              </span>
+                            </div>
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{playbook.guidance}</p>
+                          </div>
+                          <div className="flex shrink-0 gap-2">
+                            <button type="button" onClick={() => editPlaybook(playbook)} className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700">
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => deletePlaybook(playbook.id)} disabled={isDeletingPlaybook === playbook.id} aria-label={`Delete ${playbook.title}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-700 disabled:cursor-not-allowed disabled:text-slate-300">
+                              {isDeletingPlaybook === playbook.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    )) : (
+                      <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">Create playbooks for the replies you send most often.</p>
+                    )}
+                  </div>
+                </div>
+              </section>
             ) : null}
 
             {activeTab === "account" ? (

@@ -15,6 +15,7 @@ export async function GET(request: Request) {
   const rawQuery = (url.searchParams.get("q") ?? "").trim().slice(0, 300);
   const query = rawQuery ? `in:anywhere ${rawQuery}` : "";
   const pageToken = (url.searchParams.get("pageToken") ?? "").trim();
+  const includeJunk = url.searchParams.get("includeJunk") === "true";
 
   if (!auth.user) {
     return jsonError(auth.error, auth.status);
@@ -42,7 +43,9 @@ export async function GET(request: Request) {
       auth.user.id,
       result.messages.map((message) => message.id),
     );
-    const reviewMessages = result.messages.filter((message) => !junkMessageIds.has(message.id));
+    const reviewMessages = includeJunk
+      ? result.messages
+      : result.messages.filter((message) => !junkMessageIds.has(message.id));
     const triage = await triageAndStoreMessages({
       user: auth.user,
       gmailEmail: connection.gmail_email,
@@ -63,6 +66,7 @@ export async function GET(request: Request) {
         ...message,
         triage: triage.get(message.id) ?? defaultTriage,
         summary: summaries.get(message.id) ?? message.snippet,
+        isJunk: junkMessageIds.has(message.id),
       })),
     });
   } catch (gmailError) {
