@@ -271,6 +271,9 @@ create table if not exists public.gmail_draft_events (
   reply_snapshot text,
   variant_label text,
   variant_instruction text,
+  playbook_id uuid,
+  playbook_title text,
+  playbook_category text,
   sent_at timestamptz,
   sent_message_id text,
   status text not null default 'created' check (status in ('created', 'failed')),
@@ -283,6 +286,9 @@ alter table public.gmail_draft_events
   add column if not exists reply_snapshot text,
   add column if not exists variant_label text,
   add column if not exists variant_instruction text,
+  add column if not exists playbook_id uuid,
+  add column if not exists playbook_title text,
+  add column if not exists playbook_category text,
   add column if not exists sent_at timestamptz,
   add column if not exists sent_message_id text;
 

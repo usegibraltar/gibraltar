@@ -62,6 +62,8 @@ page or by changing the row to `status = 'approved'`.
 - Reply playbooks store reusable owner-approved guidance by category. Gibraltar
   can include enabled playbooks during reply generation without storing full
   email bodies.
+- Draft events can store the playbook id, title, and category used for a reply
+  so Activity and analytics can explain which reusable guidance helped.
 - Follow-up reminders are manual reminders only. They do not send emails or
   trigger background jobs in this MVP.
 - The app does not use Supabase CLI migrations. If you see `supabase_migrations.schema_migrations` errors, that is separate from this MVP signup form. The form only writes to `public.early_access_signups`.

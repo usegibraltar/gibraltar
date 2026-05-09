@@ -85,6 +85,7 @@ export async function POST(request: Request) {
       recommendedAction: generated.recommendedAction,
       missingContext: generated.missingContext,
       playbook: generated.playbook,
+      playbookReason: generated.playbookReason,
     });
   } catch (replyError) {
     console.error("Gmail reply generation failed", replyError);

@@ -24,6 +24,12 @@ export type ReplyPlaybook = {
   updated_at: string;
 };
 
+export type PlaybookMatch = {
+  playbook: ReplyPlaybook | null;
+  reason: string;
+  selection: "auto" | "explicit" | "none" | "fallback" | "unavailable";
+};
+
 export function isPlaybookCategory(value: unknown): value is PlaybookCategory {
   return typeof value === "string" && playbookCategories.includes(value as PlaybookCategory);
 }
@@ -62,19 +68,75 @@ export function choosePlaybook({
   playbookId?: string;
   category?: string;
 }) {
+  return choosePlaybookMatch({ playbooks, playbookId, category }).playbook;
+}
+
+export function choosePlaybookMatch({
+  playbooks,
+  playbookId,
+  category,
+}: {
+  playbooks: ReplyPlaybook[];
+  playbookId?: string;
+  category?: string;
+}): PlaybookMatch {
+  if (playbookId === "__none") {
+    return {
+      playbook: null,
+      reason: "No playbook used because you selected no playbook for this draft.",
+      selection: "none",
+    };
+  }
+
   if (playbookId) {
     const explicit = playbooks.find((playbook) => playbook.id === playbookId);
 
     if (explicit) {
-      return explicit;
+      return {
+        playbook: explicit,
+        reason: `Manually selected ${explicit.title} for this draft.`,
+        selection: "explicit",
+      };
     }
   }
 
   const normalizedCategory = category === "complaint" ? "complaint" : category;
+  const categoryMatch = playbooks.find((playbook) => playbook.category === normalizedCategory);
 
-  return (
-    playbooks.find((playbook) => playbook.category === normalizedCategory) ??
-    playbooks.find((playbook) => playbook.category === "general") ??
-    null
-  );
+  if (categoryMatch) {
+    return {
+      playbook: categoryMatch,
+      reason: `Matched because AI triage classified this email as ${playbookCategoryLabel(categoryMatch.category).toLowerCase()}.`,
+      selection: "auto",
+    };
+  }
+
+  const general = playbooks.find((playbook) => playbook.category === "general");
+
+  if (general) {
+    return {
+      playbook: general,
+      reason: "Used the general question playbook because no category-specific playbook matched.",
+      selection: "fallback",
+    };
+  }
+
+  return {
+    playbook: null,
+    reason: "No enabled playbook was available for this draft.",
+    selection: "unavailable",
+  };
+}
+
+export function playbookCategoryLabel(category: string) {
+  const labels: Record<string, string> = {
+    pricing: "Pricing inquiry",
+    booking: "Booking request",
+    cancellation: "Cancellation/reschedule",
+    complaint: "Complaint",
+    follow_up: "Follow-up",
+    general: "General question",
+  };
+
+  return labels[category] ?? "General question";
 }

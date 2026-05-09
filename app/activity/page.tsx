@@ -20,6 +20,9 @@ type DraftEvent = {
   reply_snapshot?: string | null;
   variant_label?: string | null;
   variant_instruction?: string | null;
+  playbook_id?: string | null;
+  playbook_title?: string | null;
+  playbook_category?: string | null;
   sent_at?: string | null;
   sent_message_id?: string | null;
   status: "created" | "failed";
@@ -273,6 +276,7 @@ function HistoryItem({ event, onOpen }: { event: DraftEvent; onOpen: () => void 
       <p className="mt-2 text-sm text-slate-500">
         {new Date(event.created_at).toLocaleString()}
         {event.variant_label ? ` · ${event.variant_label}` : ""}
+        {event.playbook_title ? ` · ${event.playbook_title}` : ""}
       </p>
       {event.error_message ? <p className="mt-2 text-sm font-semibold text-red-700">{event.error_message}</p> : null}
     </button>
@@ -292,6 +296,7 @@ function DraftEventDetail({ event }: { event: DraftEvent }) {
         <DraftDetailItem label="Sent" value={event.sent_at ? new Date(event.sent_at).toLocaleString() : "Not sent from Gibraltar"} />
         <DraftDetailItem label="Draft ID" value={event.draft_id || "Not available"} />
         <DraftDetailItem label="Sent message ID" value={event.sent_message_id || "Not available"} />
+        <DraftDetailItem label="Playbook" value={event.playbook_title || "No playbook recorded"} />
       </dl>
       {event.variant_instruction ? (
         <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">

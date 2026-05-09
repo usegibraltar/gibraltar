@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("gmail_draft_events")
-    .select("id,source_subject,draft_id,draft_message_id,reply_snapshot,status,error_message,variant_label,variant_instruction,sent_at,sent_message_id,created_at")
+    .select("id,source_subject,draft_id,draft_message_id,reply_snapshot,status,error_message,variant_label,variant_instruction,playbook_id,playbook_title,playbook_category,sent_at,sent_message_id,created_at")
     .eq("user_id", auth.user.id)
     .order("created_at", { ascending: false })
     .limit(10);
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     if (
       error.message.toLowerCase().includes("variant_label") ||
       error.message.toLowerCase().includes("reply_snapshot") ||
+      error.message.toLowerCase().includes("playbook_id") ||
       error.message.toLowerCase().includes("sent_at")
     ) {
       const { data: legacyData, error: legacyError } = await supabase

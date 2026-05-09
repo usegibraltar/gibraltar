@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -21,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { AppHeader } from "../components/app-header";
+import { GoogleGIcon } from "../components/google-g-icon";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { getSupabaseBrowser } from "../lib/supabase-browser";
 
@@ -108,6 +110,7 @@ type ReplyPayload = {
   recommendedAction?: string;
   missingContext?: string[];
   playbook?: ReplyPlaybookSummary | null;
+  playbookReason?: string;
   error?: string;
 };
 
@@ -126,6 +129,7 @@ type ReplyGuidance = {
   recommendedAction: string;
   missingContext: string[];
   playbook: ReplyPlaybookSummary | null;
+  playbookReason: string;
 };
 
 type ReplyPlaybook = {
@@ -175,6 +179,8 @@ const searchChips: SearchChip[] = [
   { label: "Has attachment", query: "has:attachment" },
   { label: "Needs reply", query: "-from:me newer_than:30d" },
 ];
+
+const noPlaybookValue = "__none";
 
 const emptyProfile: BusinessProfile = {
   businessName: "",
@@ -527,6 +533,7 @@ export default function AppPage() {
         recommendedAction: body.recommendedAction ?? "Review reply",
         missingContext: body.missingContext ?? [],
         playbook: body.playbook ?? null,
+        playbookReason: body.playbookReason ?? "Gibraltar selected reply guidance for this draft.",
       });
       if (body.playbook?.id) {
         setSelectedPlaybookId(body.playbook.id);
@@ -643,6 +650,9 @@ export default function AppPage() {
           sendNow,
           variantLabel: reviewVariantLabel,
           variantInstruction: reviewVariantInstruction,
+          playbookId: reviewGuidance?.playbook?.id,
+          playbookTitle: reviewGuidance?.playbook?.title,
+          playbookCategory: reviewGuidance?.playbook?.category,
         }),
       });
       const body = (await response.json()) as DraftPayload;
@@ -800,15 +810,17 @@ export default function AppPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-black uppercase text-teal-600">Gmail draft workspace</p>
-              <h1 className="mt-1 text-3xl font-black">Review replies before they become drafts</h1>
+              <p className="text-sm font-black uppercase text-teal-600">Reply engine</p>
+              <h1 className="mt-1 text-3xl font-black">Customer replies, ready for review</h1>
               <p className="mt-2 max-w-3xl leading-7 text-slate-600">
-                Gibraltar reads recent Gmail messages so you can choose one, tune a reply, and create a Gmail draft. Nothing is sent automatically.
+                Gibraltar turns triaged Gmail messages into clear drafts with confidence, risk, and context guidance before anything leaves your desk.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 px-4 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:hover:translate-y-0">
-                {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
+              <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white px-4 text-sm font-black text-[#3c4043] shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:border-[#c7cdd3] hover:bg-[#f8fbff] hover:text-slate-950 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition group-hover:ring-slate-300">
+                  {isConnecting ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" aria-hidden="true" /> : <GoogleGIcon className="h-4 w-4" />}
+                </span>
                 {payload.connected ? "Reconnect Gmail" : "Connect Gmail"}
               </button>
               <button type="button" onClick={disconnectGmail} disabled={isDisconnecting || !payload.connected} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-red-200 hover:text-red-700 disabled:cursor-not-allowed disabled:text-slate-300">
@@ -983,8 +995,10 @@ export default function AppPage() {
                 <Mail className="mx-auto h-10 w-10 text-teal-600" aria-hidden="true" />
                 <h3 className="mt-4 text-2xl font-black">Connect Gmail first</h3>
                 <p className="mx-auto mt-2 max-w-md text-slate-600">After Gmail is connected, customer emails will appear here.</p>
-                <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-                  {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
+                <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="group mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white px-4 text-sm font-black text-[#3c4043] shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:border-[#c7cdd3] hover:bg-[#f8fbff] hover:text-slate-950 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition group-hover:ring-slate-300">
+                    {isConnecting ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" aria-hidden="true" /> : <GoogleGIcon className="h-4 w-4" />}
+                  </span>
                   Connect Gmail
                 </button>
               </div>
@@ -1243,10 +1257,6 @@ function getDraftWarnings({
   const text = `${subject} ${reply}`.toLowerCase();
   const category = triage?.category;
 
-  if (!profile.businessName.trim()) {
-    warnings.push("Business name is missing, so the draft may sound less specific.");
-  }
-
   if ((category === "booking" || text.includes("book") || text.includes("schedule")) && !profile.bookingLink.trim() && !profile.phone.trim()) {
     warnings.push("This looks booking-related, but no booking link or phone number is saved.");
   }
@@ -1259,8 +1269,11 @@ function getDraftWarnings({
     warnings.push("The draft may discuss availability, but business hours are missing.");
   }
 
-  if (!profile.neverPromise.trim()) {
-    warnings.push("No guardrails are saved in Never promise. Add anything Gibraltar should avoid promising.");
+  if (
+    !profile.neverPromise.trim() &&
+    /\b(guarantee|promise|definitely|always|available|availability|refund|discount|free)\b/.test(text)
+  ) {
+    warnings.push("The draft may make a promise, but no Never promise guardrails are saved.");
   }
 
   return warnings.slice(0, 4);
@@ -1514,53 +1527,127 @@ function ReviewPanel({
 }) {
   const combinedWarnings = Array.from(new Set([...(guidance?.riskFlags ?? []), ...warnings]));
   const missingContext = guidance?.missingContext ?? [];
+  const confidence = guidance?.confidence ?? "medium";
+  const confidenceMeta = confidenceCopy(confidence);
+  const action = guidance?.recommendedAction ?? "Review reply";
+  const riskSummary = combinedWarnings.length ? `${combinedWarnings.length} item${combinedWarnings.length === 1 ? "" : "s"} to verify` : "No major flags";
+  const contextSummary = missingContext.length ? `${missingContext.length} gap${missingContext.length === 1 ? "" : "s"}` : "Context looks ready";
+  const sourceLine = [
+    sources?.businessContext ? "Business context" : "No business context",
+    sources?.voiceProfile ? "Voice learned" : "Voice not learned",
+    sources?.playbook ? "Playbook applied" : "No playbook",
+    `${sources?.threadMessages ?? 1} thread message${(sources?.threadMessages ?? 1) === 1 ? "" : "s"}`,
+    variantLabel,
+  ].join(" / ");
 
   return (
     <section className="grid gap-5">
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center gap-2 text-teal-700">
-          <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-          <p className="font-black">Reply command center</p>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-[#f8fbff]">
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-teal-700">
+            <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+            <p className="font-black">Reply command center</p>
+          </div>
+          <span className="inline-flex min-h-9 items-center justify-center rounded-xl bg-[#173c27] px-3 text-sm font-black text-[#f7fbf1]">
+            {action}
+          </span>
         </div>
-        <h2 className="mt-3 text-2xl font-black">{guidance?.recommendedAction ?? "Review reply"}</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{summary || subject}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <SourceBadge label={recipient || "Unknown sender"} active />
-          {triage ? <SourceBadge label={categoryLabel(triage.category)} active /> : null}
-          <SourceBadge label={`Confidence: ${guidance?.confidence ?? "medium"}`} active={guidance?.confidence !== "low"} />
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-sm font-black uppercase text-slate-500">Reply playbook</span>
-          <select
-            value={selectedPlaybookId}
-            onChange={(event) => onPlaybookChange(event.target.value)}
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100"
-          >
-            <option value="">Auto-select best match</option>
-            {playbooks.filter((playbook) => playbook.enabled).map((playbook) => (
-              <option key={playbook.id} value={playbook.id}>
-                {playbook.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-sm font-black uppercase text-slate-500">Used for this draft</p>
-          <p className="mt-2 font-black">{guidance?.playbook?.title ?? "No playbook selected"}</p>
+        <div className="grid gap-4 p-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div>
+            <p className="text-xs font-black uppercase text-slate-500">Selected email</p>
+            <h2 className="mt-2 text-2xl font-black leading-9 text-slate-950">{summary || subject || "No summary available"}</h2>
+            <div className="mt-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-slate-500">
+              <span className="max-w-full truncate font-black text-slate-700">{recipient || "Unknown sender"}</span>
+              {subject ? <span className="max-w-full truncate">{subject}</span> : null}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-black uppercase text-slate-500">Customer intent</p>
+            <p className="mt-2 text-xl font-black">{triage ? categoryLabel(triage.category) : "General"}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {triage ? <TriageBadges triage={triage} compact /> : <SourceBadge label="Review" active />}
+            </div>
+            {triage?.reason ? <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{triage.reason}</p> : null}
+          </div>
         </div>
       </div>
 
-      <p className="text-sm font-semibold text-slate-500">
-        {sources?.businessContext ? "Business context on" : "No business context"} / {sources?.voiceProfile ? "voice learned" : "voice not learned"} / {sources?.playbook ? "playbook applied" : "no playbook"} / {sources?.threadMessages ?? 1} thread messages / {variantLabel}
-      </p>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <GuidanceCard
+          title="Confidence"
+          value={confidenceMeta.label}
+          body={confidenceMeta.body}
+          tone={confidence}
+        />
+        <GuidanceCard
+          title="Risk"
+          value={riskSummary}
+          body={combinedWarnings[0] ?? "The draft has no obvious advisory flags."}
+          tone={combinedWarnings.length ? "medium" : "high"}
+        />
+        <GuidanceCard
+          title="Context"
+          value={contextSummary}
+          body={missingContext[0] ?? "Business context is sufficient for this draft."}
+          tone={missingContext.length ? "medium" : "high"}
+        />
+      </div>
 
-      <textarea value={reply} onChange={(event) => onReplyChange(event.target.value)} rows={15} className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base leading-8 text-slate-800 outline-none transition focus:border-teal-300 focus:ring-4 focus:ring-teal-100" />
+      {(combinedWarnings.length || missingContext.length) ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {combinedWarnings.length ? (
+            <GuidanceList title="Review before sending" items={combinedWarnings} tone="warning" />
+          ) : null}
+          {missingContext.length ? (
+            <GuidanceList title="Missing context" items={missingContext} tone="neutral" prefix="Add" />
+          ) : null}
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-teal-900">
+          <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <p className="text-sm font-black">No major advisory flags detected.</p>
+        </div>
+      )}
+
+      <PlaybookControl
+        playbooks={playbooks}
+        selectedPlaybookId={selectedPlaybookId}
+        activePlaybook={guidance?.playbook ?? null}
+        matchReason={guidance?.playbookReason ?? "Gibraltar can auto-select reusable guidance when it drafts."}
+        isGenerating={isGenerating}
+        onPlaybookChange={onPlaybookChange}
+        onRegenerate={() => onRevise("", "Original")}
+      />
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase text-slate-500">Draft editor</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{sourceLine}</p>
+          </div>
+          {isGenerating ? (
+            <span className="inline-flex items-center gap-2 text-sm font-black text-teal-700">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Regenerating
+            </span>
+          ) : null}
+        </div>
+        <textarea
+          value={reply}
+          onChange={(event) => onReplyChange(event.target.value)}
+          rows={16}
+          className="w-full resize-y border-0 bg-white px-4 py-4 text-base leading-8 text-slate-800 outline-none transition focus:ring-4 focus:ring-inset focus:ring-teal-100"
+        />
+      </div>
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="text-sm font-black uppercase text-slate-500">Quick rewrites</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-black uppercase text-slate-500">Quick rewrites</p>
+          <button type="button" onClick={() => onRevise("", "Original")} disabled={isGenerating} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700 disabled:cursor-not-allowed disabled:text-slate-300">
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Regenerate
+          </button>
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <ReviewButton label="Shorter" disabled={isGenerating} onClick={() => onRevise("Make this draft shorter while preserving the key next step.", "Shorter")} />
           <ReviewButton label="Warmer" disabled={isGenerating} onClick={() => onRevise("Make this draft warmer and more personable without adding fluff.", "Warmer")} />
@@ -1574,49 +1661,211 @@ function ReviewPanel({
             }
           }} />
         </div>
-        <button type="button" onClick={() => onRevise("", "Original")} disabled={isGenerating} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700 disabled:cursor-not-allowed disabled:text-slate-300">
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          Regenerate
-        </button>
       </div>
 
-      {combinedWarnings.length || missingContext.length ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          <div className="flex items-center gap-2">
-            <CircleAlert className="h-4 w-4" aria-hidden="true" />
-            <p className="text-sm font-black uppercase">Review before sending</p>
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase text-slate-500">Final actions</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{action}</p>
           </div>
-          <ul className="mt-3 space-y-2 text-sm font-semibold leading-6">
-            {combinedWarnings.map((warning) => (
-              <li key={warning}>{warning}</li>
-            ))}
-            {missingContext.map((item) => (
-              <li key={item}>Missing context: {item}</li>
-            ))}
-          </ul>
         </div>
-      ) : null}
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        <button type="button" onClick={() => onCreateDraft(false)} disabled={isDrafting || !reply.trim()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-5 text-sm font-black text-teal-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 disabled:hover:translate-y-0">
-          {isDrafting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
-          Create Gmail draft
-        </button>
-        <button type="button" onClick={() => onCreateDraft(true)} disabled={isDrafting || !reply.trim()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 px-5 text-sm font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:hover:translate-y-0">
-          {isDrafting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
-          Send now
-        </button>
-      </div>
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="text-sm font-black uppercase text-slate-500">Follow up later</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <ReminderButton label="Tomorrow" days={1} busy={isCreatingReminder} onClick={onCreateReminder} />
-          <ReminderButton label="2 days" days={2} busy={isCreatingReminder} onClick={onCreateReminder} />
-          <ReminderButton label="1 week" days={7} busy={isCreatingReminder} onClick={onCreateReminder} />
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <button type="button" onClick={() => onCreateDraft(false)} disabled={isDrafting || !reply.trim()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-5 text-sm font-black text-teal-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 disabled:hover:translate-y-0">
+            {isDrafting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
+            Create Gmail draft
+          </button>
+          <button type="button" onClick={() => onCreateDraft(true)} disabled={isDrafting || !reply.trim()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#173c27] px-5 text-sm font-black text-[#f7fbf1] shadow-lg shadow-slate-300/60 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0">
+            {isDrafting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+            Send now
+          </button>
+        </div>
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-black uppercase text-slate-500">Follow up later</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <ReminderButton label="Tomorrow" days={1} busy={isCreatingReminder} onClick={onCreateReminder} />
+            <ReminderButton label="2 days" days={2} busy={isCreatingReminder} onClick={onCreateReminder} />
+            <ReminderButton label="1 week" days={7} busy={isCreatingReminder} onClick={onCreateReminder} />
+          </div>
         </div>
       </div>
     </section>
   );
+}
+
+function confidenceCopy(confidence: ReplyConfidence) {
+  const copy: Record<ReplyConfidence, { label: string; body: string }> = {
+    high: {
+      label: "High",
+      body: "Straightforward reply with enough saved context.",
+    },
+    medium: {
+      label: "Medium",
+      body: "Review quickly before turning this into a Gmail draft.",
+    },
+    low: {
+      label: "Low",
+      body: "Important context or sensitivity needs owner judgment.",
+    },
+  };
+
+  return copy[confidence];
+}
+
+function GuidanceCard({ title, value, body, tone }: { title: string; value: string; body: string; tone: ReplyConfidence }) {
+  const classes = {
+    high: "border-teal-100 bg-teal-50 text-teal-950",
+    medium: "border-amber-100 bg-amber-50 text-amber-950",
+    low: "border-red-100 bg-red-50 text-red-950",
+  };
+
+  return (
+    <div className={`rounded-xl border p-4 ${classes[tone]}`}>
+      <p className="text-xs font-black uppercase opacity-70">{title}</p>
+      <p className="mt-2 text-xl font-black">{value}</p>
+      <p className="mt-2 text-sm font-semibold leading-6 opacity-80">{body}</p>
+    </div>
+  );
+}
+
+function GuidanceList({ title, items, tone, prefix }: { title: string; items: string[]; tone: "warning" | "neutral"; prefix?: string }) {
+  const classes = tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-950" : "border-slate-200 bg-slate-50 text-slate-800";
+
+  return (
+    <div className={`rounded-xl border p-4 ${classes}`}>
+      <div className="flex items-center gap-2">
+        <CircleAlert className="h-4 w-4" aria-hidden="true" />
+        <p className="text-sm font-black uppercase">{title}</p>
+      </div>
+      <ul className="mt-3 space-y-2 text-sm font-semibold leading-6">
+        {items.map((item) => (
+          <li key={item}>{prefix ? `${prefix}: ${item}` : item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function PlaybookControl({
+  playbooks,
+  selectedPlaybookId,
+  activePlaybook,
+  matchReason,
+  isGenerating,
+  onPlaybookChange,
+  onRegenerate,
+}: {
+  playbooks: ReplyPlaybook[];
+  selectedPlaybookId: string;
+  activePlaybook: ReplyPlaybookSummary | null;
+  matchReason: string;
+  isGenerating: boolean;
+  onPlaybookChange: (value: string) => void;
+  onRegenerate: () => void;
+}) {
+  const enabledPlaybooks = playbooks.filter((playbook) => playbook.enabled);
+  const selectionLabel =
+    selectedPlaybookId === noPlaybookValue
+      ? "No playbook"
+      : selectedPlaybookId
+        ? enabledPlaybooks.find((playbook) => playbook.id === selectedPlaybookId)?.title ?? "Selected playbook"
+        : "Auto-select";
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#173c27] text-[#f7fbf1]">
+            <BookOpen className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-black uppercase text-slate-500">Reply playbook</p>
+            <h3 className="mt-1 text-xl font-black">{activePlaybook?.title ?? selectionLabel}</h3>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">{matchReason}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRegenerate}
+          disabled={isGenerating}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 text-sm font-black text-teal-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:translate-y-0"
+        >
+          {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RotateCcw className="h-4 w-4" aria-hidden="true" />}
+          Regenerate with playbook
+        </button>
+      </div>
+      <div className="grid gap-3 p-4">
+        <div className="flex flex-wrap gap-2">
+          <PlaybookChoice
+            label="Auto"
+            detail="Best match"
+            active={!selectedPlaybookId}
+            onClick={() => onPlaybookChange("")}
+          />
+          <PlaybookChoice
+            label="None"
+            detail="Draft without reusable guidance"
+            active={selectedPlaybookId === noPlaybookValue}
+            onClick={() => onPlaybookChange(noPlaybookValue)}
+          />
+          {enabledPlaybooks.map((playbook) => (
+            <PlaybookChoice
+              key={playbook.id}
+              label={playbook.title}
+              detail={playbookCategoryLabel(playbook.category)}
+              active={selectedPlaybookId === playbook.id}
+              onClick={() => onPlaybookChange(playbook.id)}
+            />
+          ))}
+        </div>
+        {!enabledPlaybooks.length ? (
+          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-600">
+            No enabled playbooks yet. Add reusable guidance in Settings when you are ready.
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function PlaybookChoice({
+  label,
+  detail,
+  active,
+  onClick,
+}: {
+  label: string;
+  detail: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-14 rounded-xl border px-3 py-2 text-left transition ${
+        active
+          ? "border-green-900/20 bg-[#173c27] text-[#f7fbf1] shadow-sm shadow-slate-200/60"
+          : "border-slate-200 bg-white text-slate-700 hover:border-green-900/30 hover:text-slate-950"
+      }`}
+    >
+      <span className="block text-sm font-black">{label}</span>
+      <span className={`mt-1 block text-xs font-semibold ${active ? "text-[#dfead5]" : "text-slate-500"}`}>{detail}</span>
+    </button>
+  );
+}
+
+function playbookCategoryLabel(category: string) {
+  const labels: Record<string, string> = {
+    pricing: "Pricing inquiry",
+    booking: "Booking request",
+    cancellation: "Cancellation/reschedule",
+    complaint: "Complaint",
+    follow_up: "Follow-up",
+    general: "General question",
+  };
+
+  return labels[category] ?? "General question";
 }
 
 function SourceBadge({ label, active }: { label: string; active: boolean }) {

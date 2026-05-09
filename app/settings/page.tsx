@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, CheckCircle2, History, Loader2, LogOut, Mail, Save, Settings, Sparkles, Trash2, Unplug } from "lucide-react";
 import { AppHeader } from "../components/app-header";
+import { GoogleGIcon } from "../components/google-g-icon";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { getSupabaseBrowser } from "../lib/supabase-browser";
 
@@ -83,31 +84,31 @@ const starterPlaybooks: PlaybookDraft[] = [
     id: "",
     title: "Pricing inquiry",
     category: "pricing",
-    guidance: "Answer pricing questions clearly without inventing exact prices unless they are already in business context. Explain what affects the quote, ask for the details needed to estimate accurately, and move the customer toward the next step.",
-    defaultCta: "Ask for the details needed to provide an accurate quote.",
+    guidance: "Answer pricing questions clearly and confidently, but never invent exact prices unless they are saved in business context. Explain what affects the quote, ask only for the details needed to estimate accurately, and move the customer toward the next step. If pricing is not known, frame the reply around getting them an accurate answer instead of guessing.",
+    defaultCta: "Ask for the key details needed to provide an accurate quote.",
     enabled: true,
   },
   {
     id: "",
     title: "Booking request",
     category: "booking",
-    guidance: "Help the customer book quickly. Mention the booking link or phone number when available, ask for preferred times if needed, and avoid promising availability unless it is explicitly known.",
-    defaultCta: "Invite the customer to book or share their preferred time.",
+    guidance: "Make booking feel easy and immediate. Mention the booking link or phone number when available, ask for preferred times only when needed, and avoid promising availability unless it is explicitly known. Keep the reply short, warm, and action-oriented so the customer knows exactly how to get on the calendar.",
+    defaultCta: "Invite the customer to book or share their preferred time window.",
     enabled: true,
   },
   {
     id: "",
     title: "Complaint",
     category: "complaint",
-    guidance: "Acknowledge the issue, sound calm and accountable, avoid defensiveness, and move the customer toward a practical next step. Do not admit fault beyond what the business context supports.",
-    defaultCta: "Ask for the best way to resolve or continue the conversation.",
+    guidance: "Lead with calm acknowledgement and make the customer feel heard. Avoid defensiveness, blame, and unsupported admissions of fault. Do not promise refunds, discounts, timelines, or outcomes unless the business context supports them. Move toward a practical next step such as gathering details, offering a call, or escalating to the owner.",
+    defaultCta: "Ask for the details needed to make this right or continue the conversation.",
     enabled: true,
   },
   {
     id: "",
     title: "Follow-up",
     category: "follow_up",
-    guidance: "Keep the reply brief and helpful. Reference the prior conversation, make the next step easy, and avoid sounding pushy or automated.",
+    guidance: "Keep follow-ups brief, useful, and human. Reference the prior conversation naturally, make the next step easy, and avoid sounding pushy or automated. Assume the customer is busy, not uninterested. Give them a graceful way to respond or move forward.",
     defaultCta: "Ask whether they would like to move forward or need anything else.",
     enabled: true,
   },
@@ -115,7 +116,7 @@ const starterPlaybooks: PlaybookDraft[] = [
     id: "",
     title: "Cancellation or reschedule",
     category: "cancellation",
-    guidance: "Be understanding and efficient. Confirm the cancellation or reschedule request, ask for the needed timing details, and mention any policy only if the business context includes it.",
+    guidance: "Be understanding, efficient, and clear. Confirm the cancellation or reschedule request, ask for the needed timing details, and mention policies only when they are saved in business context. Do not create fees, refund rules, or availability claims that are not explicitly known.",
     defaultCta: "Ask for the new preferred time or confirm the requested change.",
     enabled: true,
   },
@@ -123,7 +124,7 @@ const starterPlaybooks: PlaybookDraft[] = [
     id: "",
     title: "General question",
     category: "general",
-    guidance: "Answer the customer directly in a friendly, concise way. Use business context where available, avoid making unsupported claims, and end with a clear next step.",
+    guidance: "Answer the customer directly in a friendly, concise way. Use business context where available, avoid unsupported claims, and do not bury the useful answer under filler. End with a clear next step only when one helps the customer move forward.",
     defaultCta: "Offer to help with the next question or next step.",
     enabled: true,
   },
@@ -147,6 +148,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingPlaybook, setIsSavingPlaybook] = useState(false);
   const [isDeletingPlaybook, setIsDeletingPlaybook] = useState("");
+  const [isTogglingPlaybook, setIsTogglingPlaybook] = useState("");
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
   const [isLearningVoice, setIsLearningVoice] = useState(false);
   const [error, setError] = useState("");
@@ -416,6 +418,49 @@ export default function SettingsPage() {
     }
   }
 
+  async function togglePlaybook(playbook: ReplyPlaybook) {
+    setIsTogglingPlaybook(playbook.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await authedFetch(`/api/playbooks/${encodeURIComponent(playbook.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: playbook.id,
+          title: playbook.title,
+          category: playbook.category,
+          guidance: playbook.guidance,
+          defaultCta: playbook.default_cta ?? "",
+          enabled: !playbook.enabled,
+        }),
+      });
+      const body = (await response.json()) as { playbook?: ReplyPlaybook; error?: string };
+
+      if (!response.ok || !body.playbook) {
+        throw new Error(body.error ?? "Could not update reply playbook.");
+      }
+
+      setPlaybooks((current) => current.map((item) => (item.id === body.playbook?.id ? body.playbook : item)));
+      if (playbookDraft.id === body.playbook.id) {
+        setPlaybookDraft({
+          id: body.playbook.id,
+          title: body.playbook.title,
+          category: body.playbook.category,
+          guidance: body.playbook.guidance,
+          defaultCta: body.playbook.default_cta ?? "",
+          enabled: body.playbook.enabled,
+        });
+      }
+      setSuccess(body.playbook.enabled ? "Reply playbook enabled." : "Reply playbook paused.");
+    } catch (playbookError) {
+      setError(friendlyErrorMessage(playbookError, "Could not update reply playbook."));
+    } finally {
+      setIsTogglingPlaybook("");
+    }
+  }
+
   function toggleVoiceSample(id: string) {
     setSelectedVoiceSampleIds((current) =>
       current.includes(id) ? current.filter((sampleId) => sampleId !== id) : [...current, id],
@@ -482,8 +527,10 @@ export default function SettingsPage() {
                   <p className="font-black">{gmailEmail || "Not connected"}</p>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-                    {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
+                  <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white px-4 text-sm font-black text-[#3c4043] shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:border-[#c7cdd3] hover:bg-[#f8fbff] hover:text-slate-950 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition group-hover:ring-slate-300">
+                      {isConnecting ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" aria-hidden="true" /> : <GoogleGIcon className="h-4 w-4" />}
+                    </span>
                     {gmailEmail ? "Reconnect Gmail" : "Connect Gmail"}
                   </button>
                   <button type="button" onClick={() => setConfirmDisconnectOpen(true)} disabled={!gmailEmail || isDisconnecting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">
@@ -567,29 +614,43 @@ export default function SettingsPage() {
             ) : null}
 
             {activeTab === "playbooks" ? (
-              <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+              <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-teal-700" aria-hidden="true" />
-                    <h2 className="text-2xl font-black">{playbookDraft.id ? "Edit playbook" : "New playbook"}</h2>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#173c27] text-[#f7fbf1]">
+                        <BookOpen className="h-5 w-5" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black uppercase text-teal-700">Reply logic</p>
+                        <h2 className="text-2xl font-black">{playbookDraft.id ? "Edit playbook" : "New playbook"}</h2>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                          Playbooks give Gibraltar reusable owner-approved judgment for repeat customer situations.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   {!playbookDraft.id ? (
-                    <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50 p-4">
-                      <p className="text-sm font-black uppercase text-teal-700">Starter templates</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-5 rounded-2xl border border-teal-100 bg-teal-50 p-4">
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm font-black uppercase text-teal-700">Starter templates</p>
+                        <p className="text-sm font-semibold text-teal-900">Pick one, tune it once, then let Gibraltar apply it inside the reply engine.</p>
+                      </div>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
                         {starterPlaybooks.map((starter) => (
-                          <button
+                          <StarterTemplateButton
                             key={starter.title}
-                            type="button"
+                            starter={starter}
                             onClick={() => setPlaybookDraft(starter)}
-                            className="min-h-10 rounded-xl border border-teal-200 bg-white px-3 text-sm font-black text-teal-800 transition hover:-translate-y-0.5"
-                          >
-                            {starter.title}
-                          </button>
+                          />
                         ))}
                       </div>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950">
+                      Editing {playbookDraft.title}. Changes apply to future generated replies.
+                    </div>
+                  )}
                   <div className="mt-5 grid gap-4">
                     <Field label="Title" value={playbookDraft.title} onChange={(value) => setPlaybookDraft({ ...playbookDraft, title: value })} />
                     <label className="block">
@@ -602,13 +663,16 @@ export default function SettingsPage() {
                     </label>
                     <Textarea label="Guidance" value={playbookDraft.guidance} onChange={(value) => setPlaybookDraft({ ...playbookDraft, guidance: value })} />
                     <Textarea label="Default CTA" value={playbookDraft.defaultCta} onChange={(value) => setPlaybookDraft({ ...playbookDraft, defaultCta: value })} />
-                    <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-black text-slate-700">
-                      <input type="checkbox" checked={playbookDraft.enabled} onChange={(event) => setPlaybookDraft({ ...playbookDraft, enabled: event.target.checked })} className="h-4 w-4 accent-teal-600" />
-                      Enabled for reply generation
+                    <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-black text-slate-700">
+                      <span>
+                        Enabled for reply generation
+                        <span className="mt-1 block text-xs font-semibold text-slate-500">Disabled playbooks stay saved but will not be suggested.</span>
+                      </span>
+                      <input type="checkbox" checked={playbookDraft.enabled} onChange={(event) => setPlaybookDraft({ ...playbookDraft, enabled: event.target.checked })} className="h-5 w-5 accent-teal-600" />
                     </label>
                   </div>
                   <div className="mt-5 flex flex-wrap gap-2">
-                    <button type="button" onClick={savePlaybook} disabled={isSavingPlaybook} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0b132b] px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                    <button type="button" onClick={savePlaybook} disabled={isSavingPlaybook} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#173c27] px-4 text-sm font-black text-[#f7fbf1] disabled:cursor-not-allowed disabled:bg-slate-300">
                       {isSavingPlaybook ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
                       Save playbook
                     </button>
@@ -620,35 +684,27 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-sm font-black uppercase text-teal-600">Saved playbooks</p>
-                      <h2 className="text-2xl font-black">{playbooks.length} total</h2>
+                      <h2 className="text-2xl font-black">{playbooks.filter((playbook) => playbook.enabled).length} active / {playbooks.length} total</h2>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">These are available in the reply panel as reusable guidance.</p>
                     </div>
+                    <button type="button" onClick={() => setPlaybookDraft(defaultPlaybook)} className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
+                      New playbook
+                    </button>
                   </div>
                   <div className="mt-5 grid gap-3">
                     {playbooks.length ? playbooks.map((playbook) => (
-                      <article key={playbook.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-black">{playbook.title}</p>
-                              <span className={`rounded-full px-2 py-1 text-xs font-black uppercase ${playbook.enabled ? "bg-teal-100 text-teal-800" : "bg-slate-200 text-slate-600"}`}>
-                                {playbook.enabled ? "Enabled" : "Off"}
-                              </span>
-                            </div>
-                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{playbook.guidance}</p>
-                          </div>
-                          <div className="flex shrink-0 gap-2">
-                            <button type="button" onClick={() => editPlaybook(playbook)} className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700">
-                              Edit
-                            </button>
-                            <button type="button" onClick={() => deletePlaybook(playbook.id)} disabled={isDeletingPlaybook === playbook.id} aria-label={`Delete ${playbook.title}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-700 disabled:cursor-not-allowed disabled:text-slate-300">
-                              {isDeletingPlaybook === playbook.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
-                            </button>
-                          </div>
-                        </div>
-                      </article>
+                      <SettingsPlaybookCard
+                        key={playbook.id}
+                        playbook={playbook}
+                        isDeleting={isDeletingPlaybook === playbook.id}
+                        isToggling={isTogglingPlaybook === playbook.id}
+                        onEdit={() => editPlaybook(playbook)}
+                        onToggle={() => togglePlaybook(playbook)}
+                        onDelete={() => deletePlaybook(playbook.id)}
+                      />
                     )) : (
                       <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">Create playbooks for the replies you send most often.</p>
                     )}
@@ -742,4 +798,83 @@ function Textarea({ label, value, onChange }: { label: string; value: string; on
 function Notice({ tone, text }: { tone: "success" | "error"; text: string }) {
   const classes = tone === "success" ? "border-teal-100 bg-teal-50 text-teal-700" : "border-red-100 bg-red-50 text-red-700";
   return <div className={`mt-4 rounded-xl border px-4 py-3 text-sm font-bold ${classes}`}>{text}</div>;
+}
+
+function StarterTemplateButton({ starter, onClick }: { starter: PlaybookDraft; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-xl border border-teal-200 bg-white px-3 py-3 text-left transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-sm"
+    >
+      <span className="block text-sm font-black text-teal-950">{starter.title}</span>
+      <span className="mt-1 block text-xs font-black uppercase text-teal-700">{playbookCategoryLabel(starter.category)}</span>
+      <span className="mt-2 line-clamp-2 block text-xs font-semibold leading-5 text-slate-600">{starter.defaultCta}</span>
+    </button>
+  );
+}
+
+function SettingsPlaybookCard({
+  playbook,
+  isDeleting,
+  isToggling,
+  onEdit,
+  onToggle,
+  onDelete,
+}: {
+  playbook: ReplyPlaybook;
+  isDeleting: boolean;
+  isToggling: boolean;
+  onEdit: () => void;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <article className={`rounded-2xl border p-4 transition ${playbook.enabled ? "border-slate-200 bg-slate-50" : "border-slate-200 bg-white opacity-75"}`}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-black">{playbook.title}</p>
+            <span className={`rounded-full px-2 py-1 text-xs font-black uppercase ${playbook.enabled ? "bg-teal-100 text-teal-800" : "bg-slate-200 text-slate-600"}`}>
+              {playbook.enabled ? "Enabled" : "Paused"}
+            </span>
+            <span className="rounded-full bg-white px-2 py-1 text-xs font-black uppercase text-slate-500">
+              {playbookCategoryLabel(playbook.category)}
+            </span>
+          </div>
+          <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{playbook.guidance}</p>
+          {playbook.default_cta ? (
+            <p className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+              CTA: {playbook.default_cta}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button type="button" onClick={onToggle} disabled={isToggling} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700 disabled:cursor-not-allowed disabled:text-slate-300">
+            {isToggling ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+            {playbook.enabled ? "Pause" : "Enable"}
+          </button>
+          <button type="button" onClick={onEdit} className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:text-teal-700">
+            Edit
+          </button>
+          <button type="button" onClick={onDelete} disabled={isDeleting} aria-label={`Delete ${playbook.title}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-700 disabled:cursor-not-allowed disabled:text-slate-300">
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function playbookCategoryLabel(category: string) {
+  const labels: Record<string, string> = {
+    pricing: "Pricing inquiry",
+    booking: "Booking request",
+    cancellation: "Cancellation/reschedule",
+    complaint: "Complaint",
+    follow_up: "Follow-up",
+    general: "General question",
+  };
+
+  return labels[category] ?? "General question";
 }

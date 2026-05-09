@@ -17,6 +17,9 @@ type CreateDraftBody = {
   reply?: unknown;
   variantLabel?: unknown;
   variantInstruction?: unknown;
+  playbookId?: unknown;
+  playbookTitle?: unknown;
+  playbookCategory?: unknown;
   sendNow?: unknown;
 };
 
@@ -45,6 +48,14 @@ export async function POST(request: Request) {
     typeof body.variantLabel === "string" ? body.variantLabel.trim().slice(0, 60) : "";
   const variantInstruction =
     typeof body.variantInstruction === "string" ? body.variantInstruction.trim().slice(0, 240) : "";
+  const requestedPlaybook =
+    typeof body.playbookId === "string" && typeof body.playbookTitle === "string"
+      ? {
+          id: body.playbookId.trim().slice(0, 80),
+          title: body.playbookTitle.trim().slice(0, 120),
+          category: typeof body.playbookCategory === "string" ? body.playbookCategory.trim().slice(0, 60) : "",
+        }
+      : null;
   const sendNow = body.sendNow === true;
 
   if (!messageId) {
@@ -74,6 +85,7 @@ export async function POST(request: Request) {
       ? {
           message: latestMessage,
           reply: reviewedReply,
+          playbook: requestedPlaybook?.id && requestedPlaybook.title ? requestedPlaybook : null,
         }
       : await generateGmailReply({
           accessToken,
@@ -111,15 +123,28 @@ export async function POST(request: Request) {
       status: "created",
       variant_label: variantLabel || "Original",
       variant_instruction: variantInstruction || null,
+      playbook_id: generated.playbook?.id ?? null,
+      playbook_title: generated.playbook?.title ?? null,
+      playbook_category: generated.playbook?.category ?? null,
       sent_at: sentMessage ? new Date().toISOString() : null,
       sent_message_id: sentMessage?.id ?? null,
     };
     const { error: insertError } = await supabase.from("gmail_draft_events").insert(createdEvent);
 
     if (insertError) {
-      const { reply_snapshot, sent_at, sent_message_id, variant_label, variant_instruction, ...legacyEvent } = createdEvent;
+      const {
+        reply_snapshot,
+        sent_at,
+        sent_message_id,
+        variant_label,
+        variant_instruction,
+        playbook_id,
+        playbook_title,
+        playbook_category,
+        ...legacyEvent
+      } = createdEvent;
       await supabase.from("gmail_draft_events").insert(legacyEvent);
-      console.warn("Draft event analytics fields are not available yet.", insertError.message, reply_snapshot, variant_label, variant_instruction, sent_at, sent_message_id);
+      console.warn("Draft event analytics fields are not available yet.", insertError.message, reply_snapshot, variant_label, variant_instruction, playbook_id, playbook_title, playbook_category, sent_at, sent_message_id);
     }
 
     const { error: handledError } = await supabase
@@ -146,6 +171,8 @@ export async function POST(request: Request) {
         threadId: message.threadId,
         draftId,
         variantLabel: variantLabel || "Original",
+        playbookId: generated.playbook?.id ?? null,
+        playbookTitle: generated.playbook?.title ?? null,
       },
     });
 

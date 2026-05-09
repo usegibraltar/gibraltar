@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react";
+import { GoogleGIcon } from "../components/google-g-icon";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { getSupabaseBrowser } from "../lib/supabase-browser";
 
@@ -148,10 +149,14 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 text-base font-black text-slate-700 shadow-sm transition hover:border-green-900/30 hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-300"
+            className="group inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-[#dadce0] bg-white px-5 text-base font-black text-[#3c4043] shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:border-[#c7cdd3] hover:bg-[#f8fbff] hover:text-slate-950 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-sm font-black text-[#173c27]">
-              G
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition group-hover:ring-slate-300">
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-slate-500" aria-hidden="true" />
+              ) : (
+                <GoogleGIcon className="h-5 w-5" />
+              )}
             </span>
             Continue with Google
           </button>

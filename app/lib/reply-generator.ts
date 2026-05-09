@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { getMessageDetail, getThreadDetail, GmailMessageDetail, GmailThreadDetail, selectLatestCustomerMessage } from "./gmail";
-import { choosePlaybook, loadEnabledPlaybooks, ReplyPlaybook } from "./playbooks";
+import { choosePlaybookMatch, loadEnabledPlaybooks, ReplyPlaybook } from "./playbooks";
 import { getSupabaseAdmin } from "./supabase";
 
 type BusinessProfile = {
@@ -30,11 +30,11 @@ const responseSchema = {
     riskFlags: {
       type: "array",
       items: { type: "string" },
-      description: "Short warnings the business owner should verify before sending.",
+      description: "Short, actionable warnings the business owner should verify before sending. Leave empty when there is no meaningful risk.",
     },
     recommendedAction: {
       type: "string",
-      description: "A short action label for the owner, such as Reply now or Verify pricing.",
+      description: "A short action label for the owner, such as Reply now, Verify pricing, Confirm availability, Handle carefully, or No reply needed.",
     },
     missingContext: {
       type: "array",
@@ -84,7 +84,8 @@ export async function generateGmailReply({
   ]);
   const thread = await getThreadDetail(accessToken, message.threadId);
   const selectedMessage = selectLatestCustomerMessage(thread.messages) ?? message;
-  const playbook = choosePlaybook({ playbooks, playbookId, category: triageCategory });
+  const playbookMatch = choosePlaybookMatch({ playbooks, playbookId, category: triageCategory });
+  const playbook = playbookMatch.playbook;
 
   const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -96,7 +97,7 @@ export async function generateGmailReply({
       {
         role: "system",
         content:
-          "You are Gibraltar, an email reply assistant for small local businesses. Draft concise, natural, useful replies that sound human and include a clear next step. Use the business context when available. Do not overpromise, invent availability, invent prices, or claim work can be done unless the business context says so.",
+          "You are Gibraltar, an email reply assistant for small local businesses. Draft concise, natural, useful replies that sound human and include a clear next step. Use the business context when available. Do not overpromise, invent availability, invent prices, or claim work can be done unless the business context says so. Return advisory guidance with honest confidence: high only when the reply is straightforward and well-supported, medium when the owner should quickly review, and low when important business context is missing or the customer situation is sensitive.",
       },
       {
         role: "user",
@@ -116,6 +117,7 @@ export async function generateGmailReply({
           formatPlaybook(playbook),
           "",
           instruction ? `Revision instruction: ${instruction}` : "Revision instruction: None",
+          `AI triage category: ${triageCategory || "Not provided"}`,
           "",
           "Selected customer email:",
           `From: ${selectedMessage.from}`,
@@ -128,7 +130,7 @@ export async function generateGmailReply({
           "Conversation thread context:",
           formatThreadContext(thread, selectedMessage.id),
           "",
-          "Write a reply draft the business owner can review in Gmail. Also return concise confidence, advisory risk flags, a recommended owner action, and any missing business context. Do not block sending; flags are advisory.",
+          "Write a reply draft the business owner can review in Gmail. Also return concise confidence, advisory risk flags, a recommended owner action, and any missing business context. Risk flags should be specific and useful, not generic. Do not block sending; flags are advisory.",
         ].join("\n"),
       },
     ],
@@ -143,14 +145,20 @@ export async function generateGmailReply({
   });
 
   const parsed = JSON.parse(aiResponse.output_text) as ReplyGenerationBody;
+  const guidance = buildReplyGuidance({
+    parsed,
+    profile,
+    selectedMessage,
+    triageCategory,
+  });
 
   return {
     message: selectedMessage,
     reply: parsed.reply,
-    confidence: normalizeConfidence(parsed.confidence),
-    riskFlags: cleanList(parsed.riskFlags, 4),
-    recommendedAction: cleanText(parsed.recommendedAction, "Review reply"),
-    missingContext: cleanList(parsed.missingContext, 4),
+    confidence: guidance.confidence,
+    riskFlags: guidance.riskFlags,
+    recommendedAction: guidance.recommendedAction,
+    missingContext: guidance.missingContext,
     playbook: playbook
       ? {
           id: playbook.id,
@@ -158,6 +166,7 @@ export async function generateGmailReply({
           category: playbook.category,
         }
       : null,
+    playbookReason: playbookMatch.reason,
     sources: {
       businessContext: Boolean(
         profile?.business_name ||
@@ -181,6 +190,114 @@ type ReplyGenerationBody = {
   recommendedAction: string;
   missingContext: string[];
 };
+
+function buildReplyGuidance({
+  parsed,
+  profile,
+  selectedMessage,
+  triageCategory,
+}: {
+  parsed: ReplyGenerationBody;
+  profile: BusinessProfile | null;
+  selectedMessage: GmailMessageDetail;
+  triageCategory?: string;
+}) {
+  const riskFlags = cleanList(parsed.riskFlags, 4);
+  const missingContext = cleanList(parsed.missingContext, 4);
+  const combinedText = `${selectedMessage.subject} ${selectedMessage.snippet} ${selectedMessage.body} ${parsed.reply}`.toLowerCase();
+  const category = triageCategory?.toLowerCase() ?? "";
+
+  const mentionsPricing =
+    category === "pricing" ||
+    /\b(price|pricing|cost|quote|estimate|rate|fee|\$|discount)\b/.test(combinedText);
+  const mentionsBooking =
+    category === "booking" ||
+    /\b(book|booking|schedule|appointment|availability|available|calendar)\b/.test(combinedText);
+  const soundsSensitive =
+    category === "complaint" ||
+    /\b(upset|angry|frustrated|complaint|issue|problem|refund|cancel|bad experience)\b/.test(combinedText);
+
+  if (mentionsPricing && !profile?.services?.trim()) {
+    appendUnique(riskFlags, "Mentions pricing or quotes; verify details before sending.", 4);
+    appendUnique(missingContext, "Pricing or service guidance", 4);
+  }
+
+  if (mentionsBooking && !profile?.booking_link?.trim() && !profile?.phone?.trim()) {
+    appendUnique(riskFlags, "Booking path is not saved; confirm the next step before sending.", 4);
+    appendUnique(missingContext, "Booking link or phone number", 4);
+  }
+
+  if (soundsSensitive) {
+    appendUnique(riskFlags, "Customer may be frustrated; review tone carefully.", 4);
+  }
+
+  if (!profile?.never_promise?.trim()) {
+    appendUnique(missingContext, "Guardrails for what Gibraltar should never promise", 4);
+  }
+
+  let confidence = normalizeConfidence(parsed.confidence);
+  if (riskFlags.length >= 2 || missingContext.length >= 3) {
+    confidence = "low";
+  } else if ((riskFlags.length || missingContext.length) && confidence === "high") {
+    confidence = "medium";
+  }
+
+  const recommendedAction = recommendAction({
+    parsedAction: parsed.recommendedAction,
+    riskFlags,
+    mentionsPricing,
+    mentionsBooking,
+    soundsSensitive,
+    confidence,
+  });
+
+  return {
+    confidence,
+    riskFlags,
+    recommendedAction,
+    missingContext,
+  };
+}
+
+function appendUnique(items: string[], value: string, maxItems: number) {
+  if (!items.some((item) => item.toLowerCase() === value.toLowerCase()) && items.length < maxItems) {
+    items.push(value);
+  }
+}
+
+function recommendAction({
+  parsedAction,
+  riskFlags,
+  mentionsPricing,
+  mentionsBooking,
+  soundsSensitive,
+  confidence,
+}: {
+  parsedAction: string;
+  riskFlags: string[];
+  mentionsPricing: boolean;
+  mentionsBooking: boolean;
+  soundsSensitive: boolean;
+  confidence: "high" | "medium" | "low";
+}) {
+  if (mentionsPricing && riskFlags.length) {
+    return "Verify pricing";
+  }
+
+  if (mentionsBooking && riskFlags.length) {
+    return "Confirm booking path";
+  }
+
+  if (soundsSensitive) {
+    return "Handle carefully";
+  }
+
+  if (confidence === "high" && !riskFlags.length) {
+    return "Reply now";
+  }
+
+  return cleanText(parsedAction, "Review reply");
+}
 
 function cleanText(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim().slice(0, 80) : fallback;
@@ -250,6 +367,7 @@ export type GeneratedReply = {
     title: string;
     category: string;
   } | null;
+  playbookReason: string;
   sources: {
     businessContext: boolean;
     voiceProfile: boolean;
