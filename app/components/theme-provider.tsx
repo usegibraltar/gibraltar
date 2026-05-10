@@ -14,11 +14,11 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem(storageKey);
-    const nextTheme = storedTheme === "light" || storedTheme === "dark" ? storedTheme : "light";
+    const nextTheme = storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
 
     setTheme(nextTheme);
     applyTheme(nextTheme);

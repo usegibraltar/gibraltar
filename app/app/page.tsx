@@ -817,7 +817,7 @@ export default function AppPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white px-4 text-sm font-black text-[#3c4043] shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:border-[#c7cdd3] hover:bg-[#f8fbff] hover:text-slate-950 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0">
+              <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="google-auth-button group inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:hover:translate-y-0">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition group-hover:ring-slate-300">
                   {isConnecting ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" aria-hidden="true" /> : <GoogleGIcon className="h-4 w-4" />}
                 </span>
@@ -995,7 +995,7 @@ export default function AppPage() {
                 <Mail className="mx-auto h-10 w-10 text-teal-600" aria-hidden="true" />
                 <h3 className="mt-4 text-2xl font-black">Connect Gmail first</h3>
                 <p className="mx-auto mt-2 max-w-md text-slate-600">After Gmail is connected, customer emails will appear here.</p>
-                <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="group mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white px-4 text-sm font-black text-[#3c4043] shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:border-[#c7cdd3] hover:bg-[#f8fbff] hover:text-slate-950 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0">
+                <button type="button" onClick={connectGmail} disabled={isConnecting || !accessToken} className="google-auth-button group mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:hover:translate-y-0">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition group-hover:ring-slate-300">
                     {isConnecting ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" aria-hidden="true" /> : <GoogleGIcon className="h-4 w-4" />}
                   </span>

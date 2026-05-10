@@ -26,23 +26,25 @@
 
 html.dark {
   color-scheme: dark;
-  --gibraltar-paper: #080b08;
-  --gibraltar-paper-soft: #0d120d;
-  --gibraltar-paper-panel: rgba(14, 19, 14, 0.92);
-  --gibraltar-ink: #f7fbf1;
-  --gibraltar-ink-soft: #dce7d6;
-  --gibraltar-muted: #9aa891;
-  --gibraltar-line: rgba(236, 247, 226, 0.14);
-  --gibraltar-line-strong: rgba(236, 247, 226, 0.26);
-  --gibraltar-green: #dcebd4;
-  --gibraltar-green-soft: rgba(91, 125, 79, 0.18);
-  --gibraltar-green-wash: rgba(91, 125, 79, 0.14);
-  --gibraltar-money: #a9d4a0;
+  --gibraltar-paper: #060906;
+  --gibraltar-paper-soft: #0b100b;
+  --gibraltar-paper-panel: rgba(16, 23, 16, 0.94);
+  --gibraltar-ink: #f6fbf1;
+  --gibraltar-ink-soft: #dfead7;
+  --gibraltar-muted: #a8b59d;
+  --gibraltar-line: rgba(238, 247, 230, 0.16);
+  --gibraltar-line-strong: rgba(238, 247, 230, 0.28);
+  --gibraltar-green: #173c27;
+  --gibraltar-green-soft: rgba(183, 213, 161, 0.18);
+  --gibraltar-green-wash: rgba(183, 213, 161, 0.09);
+  --gibraltar-money: #b9dea7;
   --gibraltar-stage:
-    linear-gradient(rgba(236, 247, 226, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(236, 247, 226, 0.035) 1px, transparent 1px),
-    radial-gradient(circle at 50% 0%, rgba(66, 91, 58, 0.32), transparent 42%),
-    linear-gradient(180deg, #070a07 0%, #0b100b 100%);
+    linear-gradient(rgba(238, 247, 230, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(238, 247, 230, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 18% 0%, rgba(185, 222, 167, 0.14), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(210, 179, 123, 0.1), transparent 30%),
+    linear-gradient(180deg, #050805 0%, #0b120c 54%, #070b07 100%);
+  --gibraltar-stage-size: 44px 44px, 44px 44px, auto, auto, auto;
   scrollbar-color: #526449 #0b100b;
 }
 
@@ -144,8 +146,8 @@ textarea {
 }
 
 html.dark .theme-toggle {
-  background: #edf7e6;
-  color: #11170f !important;
+  background: #f6fbf1;
+  color: #0b100b !important;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
 }
 
@@ -171,9 +173,19 @@ h3 {
 }
 
 .bg-\[\#f8fbff\],
+.bg-\[\#f4fbff\],
+.bg-\[\#eaf9ff\],
 .bg-\[linear-gradient\(180deg\2c \#ffffff_0\%\2c \#f4f8fc_100\%\)\] {
   background: var(--gibraltar-stage) !important;
   background-size: var(--gibraltar-stage-size) !important;
+}
+
+.bg-\[\#eef6e8\] {
+  background-color: var(--gibraltar-green-wash) !important;
+}
+
+html.dark .bg-\[\#eef6e8\]\/80 {
+  background-color: rgba(183, 213, 161, 0.1) !important;
 }
 
 .bg-white,
@@ -183,6 +195,12 @@ h3 {
 
 .bg-white\/70 {
   background-color: rgba(252, 255, 247, 0.72) !important;
+}
+
+html.dark .bg-white\/70,
+html.dark .bg-white\/80,
+html.dark .bg-white\/90 {
+  background-color: rgba(16, 23, 16, 0.76) !important;
 }
 
 .bg-slate-50,
@@ -206,6 +224,8 @@ h3 {
 }
 
 .bg-\[\#0b132b\],
+.bg-\[\#071426\],
+.bg-\[\#173c27\],
 .bg-teal-600 {
   background-color: var(--gibraltar-green) !important;
 }
@@ -224,8 +244,8 @@ html.dark .bg-gradient-to-r.from-teal-400,
 html.dark .bg-gradient-to-br.from-teal-400,
 html.dark .bg-gradient-to-br.from-teal-500,
 html.dark .bg-gradient-to-r.from-orange-500 {
-  background-image: linear-gradient(135deg, #eaf6e2 0%, #a9d4a0 100%) !important;
-  color: #0b100b !important;
+  background-image: linear-gradient(135deg, #173c27 0%, #2f6b3d 100%) !important;
+  color: #f7fbf1 !important;
 }
 
 .border-slate-100,
@@ -239,6 +259,8 @@ html.dark .bg-gradient-to-r.from-orange-500 {
 
 .text-\[\#0b132b\],
 .text-\[\#071426\],
+.text-\[\#11170f\],
+.text-\[\#3c4043\],
 .text-slate-950,
 .text-slate-900,
 .text-slate-800 {
@@ -265,10 +287,61 @@ html.dark .bg-gradient-to-r.from-orange-500 {
 .text-teal-800,
 .text-teal-700,
 .text-teal-600,
+.text-\[\#173c27\],
+.text-\[\#0f766e\],
 .text-blue-700,
 .text-purple-700,
 .hover\:text-teal-700:hover {
   color: var(--gibraltar-money) !important;
+}
+
+html.dark .text-white,
+html.dark .text-\[\#f7fbf1\],
+html.dark .text-\[\#dfead5\] {
+  color: #f7fbf1 !important;
+}
+
+html.dark .bg-red-50 {
+  background-color: rgba(127, 29, 29, 0.22) !important;
+}
+
+html.dark .border-red-100,
+html.dark .border-red-200 {
+  border-color: rgba(252, 165, 165, 0.28) !important;
+}
+
+html.dark .text-red-700,
+html.dark .text-red-800 {
+  color: #fca5a5 !important;
+}
+
+html.dark .bg-amber-50,
+html.dark .bg-orange-50 {
+  background-color: rgba(120, 53, 15, 0.22) !important;
+}
+
+html.dark .border-amber-100,
+html.dark .border-amber-200,
+html.dark .border-orange-100,
+html.dark .border-orange-200 {
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+
+html.dark .text-amber-700,
+html.dark .text-amber-800,
+html.dark .text-orange-700,
+html.dark .text-orange-800 {
+  color: #facc15 !important;
+}
+
+html.dark .bg-blue-50,
+html.dark .bg-purple-50 {
+  background-color: rgba(96, 165, 250, 0.12) !important;
+}
+
+html.dark .text-blue-800,
+html.dark .text-purple-800 {
+  color: #bfdbfe !important;
 }
 
 .shadow-slate-200\/60,
@@ -296,6 +369,22 @@ textarea {
 input::placeholder,
 textarea::placeholder {
   color: color-mix(in srgb, var(--gibraltar-muted) 70%, transparent);
+}
+
+.google-auth-button {
+  border-color: #dadce0 !important;
+  background-color: #ffffff !important;
+  color: #3c4043 !important;
+}
+
+.google-auth-button:hover {
+  border-color: #c7cdd3 !important;
+  background-color: #f8fbff !important;
+  color: #202124 !important;
+}
+
+.google-auth-button:disabled {
+  opacity: 0.6;
 }
 
 .gibraltar-stage {
@@ -327,7 +416,7 @@ textarea::placeholder {
 
 html.dark .gibraltar-kicker {
   background: rgba(255, 255, 255, 0.045);
-  color: var(--gibraltar-green);
+  color: var(--gibraltar-money);
 }
 
 .gibraltar-panel {
